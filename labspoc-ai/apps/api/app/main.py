@@ -9,7 +9,7 @@ from fastapi import FastAPI, Depends, UploadFile, File, HTTPException, Header, F
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func, inspect, text
+from sqlalchemy import select, func, inspect, text, delete
 from pypdf import PdfReader
 from docx import Document as DocxDocument
 
@@ -119,7 +119,18 @@ async def add_security_and_observability_headers(request: Request, call_next):
 
 app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 
-origins = [x.strip() for x in settings.cors_origins.split(",") if x.strip()]
+def parse_cors_origins(raw: str) -> list[str]:
+    raw = (raw or "").strip()
+    if raw.startswith("[") and raw.endswith("]"):
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                return [str(x).strip() for x in parsed if str(x).strip()]
+        except Exception:
+            pass
+    return [x.strip().strip("'\"") for x in raw.split(",") if x.strip().strip("'\"")]
+
+origins = parse_cors_origins(settings.cors_origins)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins if origins else ["*"],
@@ -440,6 +451,14 @@ def delete_asset(asset_id: str, db: Session = Depends(get_db), actor: dict = Dep
     a = db.get(Asset, asset_id)
     if not a:
         raise HTTPException(404, "Asset not found")
+    # Clean up associated photos and physical media files
+    photos = db.execute(select(AssetPhoto).where(AssetPhoto.asset_id == asset_id)).scalars().all()
+    for p in photos:
+        storage.delete(f"media/{p.storage_name}")
+        db.delete(p)
+    # Clean up associated SAEG graph links
+    db.execute(delete(AssetDocumentLink).where(AssetDocumentLink.asset_id == asset_id))
+    db.execute(delete(AssetProjectLink).where(AssetProjectLink.asset_id == asset_id))
     db.delete(a)
     db.add(AuditLog(actor=actor.get("username", "admin"), action="asset.delete", resource_type="asset", resource_id=asset_id))
     db.commit()
@@ -550,7 +569,7 @@ def photo_out(photo: AssetPhoto):
         "id": photo.id,
         "asset_id": photo.asset_id,
         "filename": photo.filename,
-        "url": f"/media/{photo.storage_name}",
+        "url": storage.get_url(f"media/{photo.storage_name}"),
         "caption": photo.caption,
         "uploaded_at": photo.uploaded_at.isoformat()
     }
@@ -892,6 +911,22 @@ def get_document_details(doc_id: str, db: Session = Depends(get_db)):
         "chunks": [{"id": c.id, "index": c.chunk_index, "page": c.page_number, "text": c.text} for c in chunks[:25]]
     }
 
+@app.get("/api/knowledge/documents/{doc_id}/download")
+def download_document(doc_id: str, db: Session = Depends(get_db)):
+    doc = db.get(Document, doc_id)
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    doc_suffix = Path(doc.filename).suffix.lower()
+    data = storage.load(f"{doc_id}{doc_suffix}")
+    if not data:
+        raise HTTPException(404, "Document file not found in storage")
+    from fastapi.responses import Response
+    return Response(
+        content=data,
+        media_type=doc.content_type or "application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{doc.filename}"'}
+    )
+
 @app.post("/api/knowledge/documents/{doc_id}/approve")
 def approve_document(doc_id: str, db: Session = Depends(get_db), actor: dict = Depends(require_admin)):
     d = db.get(Document, doc_id)
@@ -917,6 +952,8 @@ def delete_document(doc_id: str, db: Session = Depends(get_db), actor: dict = De
     d = db.get(Document, doc_id)
     if not d:
         raise HTTPException(404, "Document not found")
+    # Clean up associated SAEG graph links
+    db.execute(delete(AssetDocumentLink).where(AssetDocumentLink.document_id == doc_id))
     # Clean up associated chunk vectors explicitly
     chunks = db.execute(select(DocumentChunk).where(DocumentChunk.document_id == doc_id)).scalars().all()
     for c in chunks:
@@ -1184,6 +1221,9 @@ def project_out(p: Project, db: Session | None = None):
         "linked_assets": linked_assets
     }
 
+def secrets_id():
+    return str(uuid4())[:8].upper()
+
 @app.post("/api/projects/submit")
 def submit_project(payload: ProjectSubmit, request: Request, db: Session = Depends(get_db)):
     """Public submission endpoint for student and faculty innovators with rate limiting & sanitization."""
@@ -1223,9 +1263,6 @@ def submit_project(payload: ProjectSubmit, request: Request, db: Session = Depen
         "status": "pending_approval",
         "message": "Project submitted successfully. It will appear in the showcase after institutional review."
     }
-
-def secrets_id():
-    return str(uuid4())[:8].upper()
 
 @app.post("/api/projects")
 def create_project(payload: ProjectCreate, db: Session = Depends(get_db), actor: dict = Depends(require_admin)):
@@ -1271,6 +1308,8 @@ def delete_project(project_id: str, db: Session = Depends(get_db), actor: dict =
     project = db.get(Project, project_id)
     if not project:
         raise HTTPException(404, "Project not found")
+    # Clean up associated SAEG graph links
+    db.execute(delete(AssetProjectLink).where(AssetProjectLink.project_id == project_id))
     db.delete(project)
     db.add(AuditLog(actor=actor.get("username", "admin"), action="project.delete", resource_type="project", resource_id=project_id))
     db.commit()

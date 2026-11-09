@@ -104,3 +104,7 @@ def test_s3_storage_adapter_interface():
     )
     url = s3.get_url("documents/dgx1_sop.pdf")
     assert url == "https://cdn.labspoc.oist.edu/documents/dgx1_sop.pdf"
+
+def test_document_download_endpoint():
+    res = client.get("/api/knowledge/documents/nonexistent-id/download")
+    assert res.status_code == 404

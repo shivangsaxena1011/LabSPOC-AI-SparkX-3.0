@@ -593,7 +593,7 @@ export default function OperationsWorkspace() {
           </div>
 
           <div className="px-3 pt-3 text-[10px] text-slate-400">
-            LabSPOC AI · Release 0.7.1
+            LabSPOC AI · Release 0.9.0
           </div>
         </aside>
 
@@ -1168,7 +1168,7 @@ export default function OperationsWorkspace() {
                         </div>
                         <button
                           onClick={login}
-                          disabled={authBusy || adminPassword.length < 4}
+                          disabled={authBusy || adminPassword.length < 8}
                           className="btn btn-primary w-full justify-center"
                         >
                           {authBusy ? "Authenticating..." : "Sign In with Credentials"}
@@ -1556,7 +1556,7 @@ export default function OperationsWorkspace() {
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-400">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          LabSPOC AI · SPARKX 3.0 Development Build · AI & ML Laboratory, Oriental Institute of Science & Technology
+          LabSPOC AI · SPARKX 3.0 Release 0.9.0 · AI & ML Laboratory, Oriental Institute of Science & Technology
         </div>
       </footer>
     </div>

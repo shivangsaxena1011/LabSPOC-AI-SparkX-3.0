@@ -48,11 +48,6 @@ def create_submission_zip():
     size_mb = size_bytes / (1024 * 1024)
     print(f"Submission zip created: {zip_path}")
     print(f"Archive size: {size_bytes} bytes ({size_mb:.2f} MB)")
-    
-    # Also copy to root for easy evaluator access
-    import shutil
-    shutil.copy2(zip_path, root_zip_path)
-    print(f"Copied to root: {root_zip_path}")
 
 if __name__ == "__main__":
     create_submission_zip()
