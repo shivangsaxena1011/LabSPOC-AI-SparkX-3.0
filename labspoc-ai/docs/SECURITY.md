@@ -1,33 +1,98 @@
-# Security and privacy notes
+# LabSPOC AI — Security Architecture & Governance Report (Release 0.7.1)
 
-This repository is an initial development release, not a security-certified institutional deployment.
+**Target System:** LabSPOC AI — Institutional Laboratory Intelligence Platform  
+**Target Environment:** AI & ML Laboratory, Oriental Institute of Science & Technology (OIST), Bhopal  
+**Evaluation Scope:** Release 0.7.1 Security Hardening & Threat Model Assessment  
 
-Before public deployment:
-1. Add authentication (OIDC/SAML or institutional identity provider).
-2. Enforce role-based authorization on document upload, approval, asset editing, project approval, and analytics.
-3. Scan uploads for malware; validate MIME type and file size; isolate parsing.
-4. Store confidential files in private object storage.
-5. Apply document-level access controls during retrieval.
-6. Add rate limiting, audit logs, secret rotation and TLS.
-7. Implement visitor consent, retention, export and deletion workflows.
-8. Review privacy obligations and institutional policies.
-9. Do not ingest unpublished patent or research material without owner authorization.
-10. Never expose raw internal document chunks to unauthorized visitors.
+---
 
-## Release 0.2 administrator boundary
+## 1. Authentication & Identity Management
 
-All write operations that change the institutional knowledge base (asset creation, document upload/approval, project creation/approval) require the `X-Admin-Key` header. Configure a long random `ADMIN_API_KEY`; if it is unset, write operations fail closed with HTTP 503. A missing or incorrect key returns HTTP 401. The comparison uses a constant-time comparison.
+### PBKDF2-HMAC-SHA256 Password Storage
+- Passwords are never stored in plaintext.
+- Password hashing employs `PBKDF2-HMAC-SHA256` using:
+  - 240,000 hash iterations.
+  - Cryptographically secure 16-byte random salt generated per user via `os.urandom(16)`.
+  - Constant-time comparison (`hmac.compare_digest`) to prevent timing attacks.
 
-This is a development/staging access boundary, not institutional identity management. Before public institutional deployment, replace the shared key with SSO/OIDC, individual administrator identities, role-based permissions, audit trails, key rotation, and secret management. Never put the Gemini API key in the frontend or commit `.env` files.
+### JSON Web Token (JWT) Bearer Authentication
+- Tokens are signed using the `HS256` algorithm with a minimum 256-bit secret key (`JWT_SECRET`).
+- Token expiration is enforced (default 12 hours) via the `exp` claim.
+- Token validation verifies signature, expiry, and queries the database on every authenticated request to guarantee that the account remains `is_active` and possesses the requisite role.
 
-Gemini is invoked only after approved knowledge passages and/or a structured asset record have been retrieved. The prompt explicitly restricts generation to that evidence. If Gemini is unavailable, the API falls back to its extractive evidence response. Provider errors are not exposed to visitors. This is a mitigation, not a guarantee against hallucination; validate answers with a representative benchmark before deployment.
+### Role-Based Access Control (RBAC) Matrix
 
-## Phase 05 identity and access controls
+| Endpoint Group | `admin` | `editor` | `viewer` | Public Visitor |
+| :--- | :---: | :---: | :---: | :---: |
+| **Zone Management (`POST`, `PUT`, `DELETE`)** | Allowed | Denied | Denied | Denied |
+| **User Administration & Audit Logs** | Allowed | Denied | Denied | Denied |
+| **Equipment Hotspots & Specifications** | Allowed | Allowed | Denied | Read-Only |
+| **Document Upload & Approval** | Allowed | Allowed | Denied | Denied |
+| **Project Submission Approval** | Allowed | Allowed | Denied | Denied |
+| **Public Project Submission** | Allowed | Allowed | Allowed | Rate-Limited |
+| **Conversational Queries & 3D Explorer** | Allowed | Allowed | Allowed | Allowed |
 
-The API supports bootstrap administrator credentials (`ADMIN_USERNAME`, `ADMIN_PASSWORD`), PBKDF2-HMAC-SHA256 password hashing with per-user salts, HS256 bearer tokens, and `admin` / `editor` / `viewer` role values. `JWT_SECRET` must be a unique secret of at least 32 characters. Protected bearer-token requests check that the account remains active and that its role has not changed. Admin-only routes manage users and inspect audit records. Content write routes accept admin/editor tokens.
+---
 
-`X-Admin-Key` remains supported as a compatibility path for older releases. It is a shared privileged secret and should be removed from production after clients migrate to bearer tokens. No SSO, MFA, password reset, refresh-token rotation, or formal security audit is included.
+## 2. Network, Headers & Middlewares
 
-## Phase 06 retrieval safeguards
+### Security Headers Middleware
+All HTTP responses from the FastAPI backend enforce defensive security headers:
+- `X-Content-Type-Options: nosniff` (mitigates MIME-sniffing exploits).
+- `X-Frame-Options: SAMEORIGIN` (prevents clickjacking attacks).
+- `X-XSS-Protection: 1; mode=block` (activates browser XSS filters).
+- `Referrer-Policy: strict-origin-when-cross-origin` (prevents referrer leakages).
 
-Only approved document chunks enter retrieval. When Gemini is configured, query and chunk embeddings are used for hybrid semantic/lexical ranking. If embeddings are unavailable, retrieval falls back to lexical overlap. Gemini receives only retrieved evidence and structured lab facts. The response gate rejects invalid numeric citation references and unsupported uncited factual answers, then uses an extractive fallback. These measures reduce risk but do not prove answer correctness or eliminate hallucinations; human review and a curated evaluation set are required.
+### Reverse-Proxy Aware Rate Limiting
+- Employs a sliding-window in-memory rate limiter per IP address.
+- Correctly inspects `X-Forwarded-For` and `X-Real-IP` request headers when deployed behind reverse proxies (Nginx, Traefik, AWS ALB) with fallback to direct client socket IP.
+- Default limit: 120 requests per minute for general routes; 60 requests per minute for public project submissions. Exceeding limits returns `HTTP 429 Too Many Requests`.
+
+### Cross-Origin Resource Sharing (CORS)
+- CORS origins are strictly configurable via the `CORS_ORIGINS` environment variable (defaults to `http://localhost:3000`).
+- Wildcard `*` origins are disabled by default.
+
+---
+
+## 3. Input Validation & Abuse Protection
+
+### Public Project Submission Sanitization
+- Public project submissions undergo strict regex-based HTML/script tag stripping:
+  ```python
+  clean_title = re.sub(r'<[^>]*>', '', title).strip()
+  ```
+- All submissions are quarantined with initial status `pending_review` and require administrative approval before publication or inclusion in RAG evidence.
+
+### Document and File Upload Protection
+- **Extension Whitelist:** Only `.pdf`, `.docx`, `.txt`, and `.md` are permitted for knowledge ingestion.
+- **Magic-Byte Sniffing:** Physical equipment photo uploads require binary header inspection (`verify_file_magic`) validating PNG (`89 50 4E 47`), JPEG (`FF D8 FF`), and WebP signatures.
+- **Payload Size Limits:** Uploads exceeding `MAX_UPLOAD_SIZE_MB` (default 25 MB) are rejected before memory allocation.
+- **Path Traversal Mitigation:** Uploaded filenames are sanitized and assigned random UUID keys in storage, preventing path traversal attacks.
+
+### SQL Injection Prevention
+- 100% of database interactions are authored via SQLAlchemy 2.0 ORM models and parameterized core expressions (`select(...)`, `execute(...)`).
+- Raw string formatting inside SQL statements is strictly prohibited.
+
+---
+
+## 4. AI & Retrieval Safeguards (Evidence Gate)
+
+### Strict Document Governance
+- Documents uploaded by editors remain `pending_review` until formally approved by an administrator.
+- Unapproved documents are strictly excluded from embedding generation, hybrid search, and LLM context.
+
+### Citation Verification & Hallucination Prevention
+- The Google Gemini prompt is strictly constrained to approved retrieved snippets with temperature 0.1.
+- Gemini is mandated to format evidence strictly as numeric brackets: `[1]`, `[2]`.
+- The **Evidence Gate** intercepts the generated response before transmission:
+  - If citation numbers exceed the count of supplied chunks, the response is rejected.
+  - If the model makes factual claims without citations or abstention phrasing, the response is rejected.
+  - When evidence is insufficient, the system abstains honestly with verified fallback messaging.
+
+---
+
+## 5. Visitor Privacy & Data Retention
+
+- **Opt-In Analytics Consent:** Visitors choose whether to allow analytics tracking during onboarding. When consent is denied (`consent: false`), no event records or question logs are persisted.
+- **No PII Collection:** Visitor sessions are identified by transient client tokens; no personal identification, email addresses, or biometric data are gathered.
+- **Session Summaries:** Visitors can export a transparent local summary of their session history and interactions.

@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "LabSPOC AI API"
+    app_version: str = "0.7.1"
     database_url: str = "sqlite:///./labspoc.db"
     upload_dir: str = "./uploads"
     max_upload_mb: int = 25

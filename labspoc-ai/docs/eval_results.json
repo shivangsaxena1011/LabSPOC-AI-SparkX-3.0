@@ -1,0 +1,190 @@
+{
+  "evaluation_timestamp": "2026-11-09 18:32:27 UTC",
+  "test_cases_count": 10,
+  "grounded_cases_count": 7,
+  "abstention_cases_count": 3,
+  "metrics": {
+    "recall_at_5": 1.0,
+    "mean_reciprocal_rank_mrr": 1.0,
+    "citation_validity_rate": 0.8571,
+    "correct_abstention_rate": 1.0,
+    "avg_retrieval_latency_ms": 1723.43,
+    "avg_gemini_latency_ms": 3028.01
+  },
+  "individual_results": [
+    {
+      "id": "EVAL-01",
+      "category": "Hardware Specifications",
+      "query": "What are the GPU memory and power requirements for the NVIDIA DGX Station A100?",
+      "expected_to_abstain": false,
+      "rank": 1,
+      "recall@5": 1.0,
+      "mrr": 1.0,
+      "retrieval_ms": 1601.24,
+      "generation_ms": 3428.62,
+      "gate_passed": true,
+      "abstained": false,
+      "reason": "gate_passed_with_citations",
+      "citations": [
+        1
+      ],
+      "answer_preview": "The NVIDIA DGX Station A100 has a total of 320GB GPU memory, distributed across 4x NVIDIA A100 80GB Tensor Core GPUs [1]. For power requirem..."
+    },
+    {
+      "id": "EVAL-02",
+      "category": "Safety SOPs",
+      "query": "What fire extinguishing protocol must be followed in case of an electrical fire in the server rack?",
+      "expected_to_abstain": false,
+      "rank": 1,
+      "recall@5": 1.0,
+      "mrr": 1.0,
+      "retrieval_ms": 1955.66,
+      "generation_ms": 3365.94,
+      "gate_passed": true,
+      "abstained": false,
+      "reason": "gate_passed_with_citations",
+      "citations": [
+        1,
+        2
+      ],
+      "answer_preview": "In the event of an electrical fire in the server rack, you must use only Class C Carbon Dioxide (CO2) or Clean Agent (FM-200 / Novec 1230) f..."
+    },
+    {
+      "id": "EVAL-03",
+      "category": "Compute Allocation & Scheduling",
+      "query": "What is the maximum allowed continuous Slurm batch job duration for student researchers on the GPU cluster?",
+      "expected_to_abstain": false,
+      "rank": 1,
+      "recall@5": 1.0,
+      "mrr": 1.0,
+      "retrieval_ms": 1782.18,
+      "generation_ms": 3231.67,
+      "gate_passed": true,
+      "abstained": false,
+      "reason": "gate_passed_with_citations",
+      "citations": [
+        1
+      ],
+      "answer_preview": "For student researchers, the maximum allowed continuous Slurm batch job duration on the GPU cluster is a strict 48-hour continuous runtime w..."
+    },
+    {
+      "id": "EVAL-04",
+      "category": "Hardware Specifications",
+      "query": "What power input and thermal cooling operating range does the Jetson AGX Orin Developer Kit require?",
+      "expected_to_abstain": false,
+      "rank": 1,
+      "recall@5": 1.0,
+      "mrr": 1.0,
+      "retrieval_ms": 1359.37,
+      "generation_ms": 4072.23,
+      "gate_passed": true,
+      "abstained": false,
+      "reason": "gate_passed_with_citations",
+      "citations": [
+        1,
+        2
+      ],
+      "answer_preview": "The Jetson AGX Orin Developer Kit requires power input via the supplied 19V DC barrel connector or a USB-PD compliant charger supporting 7V ..."
+    },
+    {
+      "id": "EVAL-05",
+      "category": "Lab Protocols",
+      "query": "How should the VR Headset sensors and lenses be calibrated and cleaned after each session?",
+      "expected_to_abstain": false,
+      "rank": 1,
+      "recall@5": 1.0,
+      "mrr": 1.0,
+      "retrieval_ms": 1419.19,
+      "generation_ms": 5101.28,
+      "gate_passed": true,
+      "abstained": false,
+      "reason": "gate_passed_with_citations",
+      "citations": [
+        1
+      ],
+      "answer_preview": "For cleaning, VR headset lenses must be cleaned exclusively with dry optical microfiber cloths. It is crucial never to apply alcohol-based w..."
+    },
+    {
+      "id": "EVAL-06",
+      "category": "Safety SOPs",
+      "query": "Where is the emergency power shutoff switch located in the AI & ML Laboratory?",
+      "expected_to_abstain": false,
+      "rank": 1,
+      "recall@5": 1.0,
+      "mrr": 1.0,
+      "retrieval_ms": 1484.62,
+      "generation_ms": 3128.86,
+      "gate_passed": true,
+      "abstained": false,
+      "reason": "gate_passed_with_citations",
+      "citations": [
+        1
+      ],
+      "answer_preview": "The main Emergency Power Off (EPO) button is located immediately to the right of the primary laboratory entrance exit door [1]."
+    },
+    {
+      "id": "EVAL-07",
+      "category": "Lab Protocols",
+      "query": "What prerequisites must students complete before accessing the High-Performance Compute cluster?",
+      "expected_to_abstain": false,
+      "rank": 1,
+      "recall@5": 1.0,
+      "mrr": 1.0,
+      "retrieval_ms": 2677.78,
+      "generation_ms": 1134.61,
+      "gate_passed": false,
+      "abstained": false,
+      "reason": "provider_error_ClientError",
+      "citations": [],
+      "answer_preview": ""
+    },
+    {
+      "id": "EVAL-08",
+      "category": "Out-of-Scope (Abstention Required)",
+      "query": "What is the procedure for enriching uranium isotopes in the OIST AI & ML Laboratory?",
+      "expected_to_abstain": true,
+      "rank": null,
+      "recall@5": null,
+      "mrr": null,
+      "retrieval_ms": 1640.65,
+      "generation_ms": 2762.33,
+      "gate_passed": true,
+      "abstained": true,
+      "reason": "gate_passed_with_abstention",
+      "citations": [],
+      "answer_preview": "I am LabSPOC AI, the official virtual laboratory ambassador for the AI & ML Laboratory at OIST, Bhopal.\n\nThe procedure for enriching uranium..."
+    },
+    {
+      "id": "EVAL-09",
+      "category": "Fabrication Bait (Abstention Required)",
+      "query": "What is the price and serial number of the Quantum Annealing D-Wave 2000Q system installed in Room 302?",
+      "expected_to_abstain": true,
+      "rank": null,
+      "recall@5": null,
+      "mrr": null,
+      "retrieval_ms": 1556.17,
+      "generation_ms": 1408.42,
+      "gate_passed": false,
+      "abstained": false,
+      "reason": "provider_error_ClientError",
+      "citations": [],
+      "answer_preview": ""
+    },
+    {
+      "id": "EVAL-10",
+      "category": "Fabrication Bait (Abstention Required)",
+      "query": "Can you provide the cafeteria daily lunch menu and hostel curfew timings from the lab manual?",
+      "expected_to_abstain": true,
+      "rank": null,
+      "recall@5": null,
+      "mrr": null,
+      "retrieval_ms": 1757.43,
+      "generation_ms": 2646.15,
+      "gate_passed": true,
+      "abstained": true,
+      "reason": "gate_passed_with_abstention",
+      "citations": [],
+      "answer_preview": "I apologize, but the available laboratory records do not contain information regarding the cafeteria daily lunch menu or hostel curfew timin..."
+    }
+  ]
+}

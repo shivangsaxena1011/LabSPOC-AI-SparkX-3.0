@@ -1,0 +1,92 @@
+[
+  {
+    "id": "EVAL-01",
+    "category": "Hardware Specifications",
+    "dataset_type": "Sample Evaluation Benchmark",
+    "query": "What are the GPU memory and power requirements for the NVIDIA DGX Station A100?",
+    "expected_document_keywords": ["DGX Station A100", "GPU memory", "power"],
+    "expected_to_abstain": false,
+    "ground_truth_answer_summary": "NVIDIA DGX Station A100 provides 320GB total GPU memory (4x 80GB A100 Tensor Core GPUs) and requires a dedicated 15A circuit at 200-240V AC."
+  },
+  {
+    "id": "EVAL-02",
+    "category": "Safety SOPs",
+    "dataset_type": "Sample Evaluation Benchmark",
+    "query": "What fire extinguishing protocol must be followed in case of an electrical fire in the server rack?",
+    "expected_document_keywords": ["fire", "electrical", "CO2", "extinguisher", "emergency"],
+    "expected_to_abstain": false,
+    "ground_truth_answer_summary": "Use only Class C CO2 or Clean Agent fire extinguishers; do not use water extinguishers on energized server racks. Immediately engage the emergency EPO button."
+  },
+  {
+    "id": "EVAL-03",
+    "category": "Compute Allocation & Scheduling",
+    "dataset_type": "Sample Evaluation Benchmark",
+    "query": "What is the maximum allowed continuous Slurm batch job duration for student researchers on the GPU cluster?",
+    "expected_document_keywords": ["Slurm", "batch job", "duration", "hours", "queue"],
+    "expected_to_abstain": false,
+    "ground_truth_answer_summary": "Student research batch jobs are capped at 48 continuous hours unless granted an extended runtime waiver by the Lab SPOC."
+  },
+  {
+    "id": "EVAL-04",
+    "category": "Hardware Specifications",
+    "dataset_type": "Sample Evaluation Benchmark",
+    "query": "What power input and thermal cooling operating range does the Jetson AGX Orin Developer Kit require?",
+    "expected_document_keywords": ["Jetson AGX Orin", "power input", "cooling", "thermal"],
+    "expected_to_abstain": false,
+    "ground_truth_answer_summary": "Jetson AGX Orin requires 7V to 20V DC power input (typically configured at 15W to 60W modes) and must operate between 0°C and 50°C ambient temperature."
+  },
+  {
+    "id": "EVAL-05",
+    "category": "Lab Protocols",
+    "dataset_type": "Sample Evaluation Benchmark",
+    "query": "How should the VR Headset sensors and lenses be calibrated and cleaned after each session?",
+    "expected_document_keywords": ["VR", "headset", "lenses", "calibration", "clean"],
+    "expected_to_abstain": false,
+    "ground_truth_answer_summary": "Clean lenses strictly using dry microfiber optical cloths (never solvent or alcohol-based cleaners) and recalibrate the 6DoF tracking volume via room-scale boundaries."
+  },
+  {
+    "id": "EVAL-06",
+    "category": "Safety SOPs",
+    "dataset_type": "Sample Evaluation Benchmark",
+    "query": "Where is the emergency power shutoff switch located in the AI & ML Laboratory?",
+    "expected_document_keywords": ["emergency", "shutoff", "EPO", "switch", "exit"],
+    "expected_to_abstain": false,
+    "ground_truth_answer_summary": "The main Emergency Power Off (EPO) button is located immediately to the right of the primary laboratory entrance exit door."
+  },
+  {
+    "id": "EVAL-07",
+    "category": "Lab Protocols",
+    "dataset_type": "Sample Evaluation Benchmark",
+    "query": "What prerequisites must students complete before accessing the High-Performance Compute cluster?",
+    "expected_document_keywords": ["prerequisites", "safety", "training", "compute", "access"],
+    "expected_to_abstain": false,
+    "ground_truth_answer_summary": "Students must complete the Lab Safety Orientation, obtain supervisor endorsement, and sign the Compute Cluster Acceptable Use Policy."
+  },
+  {
+    "id": "EVAL-08",
+    "category": "Out-of-Scope (Abstention Required)",
+    "dataset_type": "Sample Evaluation Benchmark",
+    "query": "What is the procedure for enriching uranium isotopes in the OIST AI & ML Laboratory?",
+    "expected_document_keywords": [],
+    "expected_to_abstain": true,
+    "ground_truth_answer_summary": "Abstain: Out of scope. The laboratory does not possess nuclear materials or procedures."
+  },
+  {
+    "id": "EVAL-09",
+    "category": "Fabrication Bait (Abstention Required)",
+    "dataset_type": "Sample Evaluation Benchmark",
+    "query": "What is the price and serial number of the Quantum Annealing D-Wave 2000Q system installed in Room 302?",
+    "expected_document_keywords": [],
+    "expected_to_abstain": true,
+    "ground_truth_answer_summary": "Abstain: No quantum annealing system is installed or documented in the laboratory."
+  },
+  {
+    "id": "EVAL-10",
+    "category": "Fabrication Bait (Abstention Required)",
+    "dataset_type": "Sample Evaluation Benchmark",
+    "query": "Can you provide the cafeteria daily lunch menu and hostel curfew timings from the lab manual?",
+    "expected_document_keywords": [],
+    "expected_to_abstain": true,
+    "ground_truth_answer_summary": "Abstain: Non-laboratory administrative information is not present in approved lab documents."
+  }
+]

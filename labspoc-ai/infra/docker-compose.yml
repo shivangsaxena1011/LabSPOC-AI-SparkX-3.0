@@ -1,13 +1,76 @@
+version: "3.8"
+
 services:
   postgres:
-    image: postgres:16
+    image: postgres:16-alpine
+    container_name: labspoc-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: labspoc
-      POSTGRES_USER: labspoc
-      POSTGRES_PASSWORD: change-this-local-password
+      POSTGRES_DB: ${POSTGRES_DB:-labspoc}
+      POSTGRES_USER: ${POSTGRES_USER:-labspoc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-local-password}
     ports:
       - "5432:5432"
     volumes:
-      - labspoc_pg:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-labspoc} -d ${POSTGRES_DB:-labspoc}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - labspoc_net
+
+  api:
+    build:
+      context: ../apps/api
+      dockerfile: Dockerfile
+    container_name: labspoc-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-labspoc}:${POSTGRES_PASSWORD:-change-this-local-password}@postgres:5432/${POSTGRES_DB:-labspoc}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-min-32-chars-key}
+      ENVIRONMENT: production
+      CORS_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000"]'
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - "8000:8000"
+    volumes:
+      - api_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - labspoc_net
+
+  web:
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+    container_name: labspoc-web
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    networks:
+      - labspoc_net
+
 volumes:
-  labspoc_pg:
+  postgres_data:
+  api_uploads:
+
+networks:
+  labspoc_net:
+    driver: bridge

@@ -6,7 +6,7 @@
 **Target Laboratory Profile:** AI & ML Laboratory  
 **Preferred AI Provider:** Google Gemini (`gemini-2.5-flash`, `gemini-embedding-001`)  
 **Architecture:** Python FastAPI Backend, Next.js 14, React 18, TypeScript, Tailwind CSS, Three.js / React Three Fiber  
-**Release:** 0.7.0 — Production Stabilization & Feature Integration  
+**Release:** 0.7.1 — Final Integration, Security & Deployment Verification  
 
 ---
 
@@ -94,12 +94,13 @@ Automated verification pipeline that inspects every AI response before display:
 
 ## Repository Documentation Index
 
-- [`CODEBASE_AUDIT.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/CODEBASE_AUDIT.md): Comprehensive Phase 01 codebase audit and verification report.
+- [`CODEBASE_AUDIT.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/CODEBASE_AUDIT.md): Comprehensive codebase audit and verification report.
 - [`IMPLEMENTATION_STATUS.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/IMPLEMENTATION_STATUS.md): Challenge modules & signature innovations status matrix.
-- [`TECHNICAL_DEBT.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/TECHNICAL_DEBT.md): Technical debt assessment and remediation log.
-- [`docs/ARCHITECTURE.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/labspoc-ai/docs/ARCHITECTURE.md): Architectural decisions and data models.
-- [`docs/SECURITY.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/labspoc-ai/docs/SECURITY.md): Security analysis and governance notes.
-- [`docs/USER_MANUAL.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/labspoc-ai/docs/USER_MANUAL.md): Institutional user manual for visitors and lab administrators.
+- [`TECHNICAL_DEBT.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/TECHNICAL_DEBT.md): Technical debt assessment, resolved items, and roadmap.
+- [`TEST_REPORT.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/TEST_REPORT.md): 34/34 passing test results, Gemini benchmarks, and evaluation metrics.
+- [`DEPLOYMENT.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/DEPLOYMENT.md): Container orchestration, environment variables, migrations, and backups.
+- [`SECURITY.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/SECURITY.md): Security architecture, RBAC, input sanitization, and data governance.
+- [`USER_MANUAL.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/USER_MANUAL.md): Institutional user manual for visitors and lab administrators.
 
 ---
 

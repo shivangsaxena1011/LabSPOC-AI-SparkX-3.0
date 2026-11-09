@@ -593,7 +593,7 @@ export default function OperationsWorkspace() {
           </div>
 
           <div className="px-3 pt-3 text-[10px] text-slate-400">
-            LabSPOC AI · Release 0.7.0
+            LabSPOC AI · Release 0.7.1
           </div>
         </aside>
 

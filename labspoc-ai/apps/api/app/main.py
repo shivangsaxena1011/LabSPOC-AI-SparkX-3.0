@@ -94,9 +94,18 @@ MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.7.0",
+    version=settings.app_version,
     description="Spatially Grounded Virtual Lab Ambassador Intelligence Platform for OIST Bhopal AI & ML Laboratory"
 )
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 
@@ -109,17 +118,26 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-# In-memory sliding rate limiter
+# In-memory sliding rate limiter with reverse proxy header support
 _rate_limits = defaultdict(list)
 
+def get_client_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip.strip()
+    return request.client.host if request.client else "127.0.0.1"
+
 def check_rate_limit(request: Request, limit: int = 120, window_sec: int = 60):
-    client_ip = request.client.host if request.client else "127.0.0.1"
+    client_ip = get_client_ip(request)
     now = time.time()
     timestamps = [t for t in _rate_limits[client_ip] if now - t < window_sec]
     if len(timestamps) >= limit:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Rate limit exceeded. Maximum {limit} requests per minute."
+            detail=f"Rate limit exceeded. Maximum {limit} requests per {window_sec}s."
         )
     timestamps.append(now)
     _rate_limits[client_ip] = timestamps
@@ -209,7 +227,7 @@ def health():
     return {
         "status": "ok",
         "service": settings.app_name,
-        "version": "0.7.0",
+        "version": settings.app_version,
         "laboratory": settings.lab_name,
         "institution": settings.institution_name,
         "llm_provider": settings.llm_provider,
@@ -723,7 +741,12 @@ async def upload_document(
                 db.flush()
                 vector = embed_text(chunk)
                 if vector:
-                    db.add(ChunkVector(chunk_id=row.id, model=settings.embedding_model, vector_json=json.dumps(vector)))
+                    existing_vec = db.get(ChunkVector, row.id)
+                    if existing_vec:
+                        existing_vec.vector_json = json.dumps(vector)
+                        existing_vec.model = settings.embedding_model
+                    else:
+                        db.add(ChunkVector(chunk_id=row.id, model=settings.embedding_model, vector_json=json.dumps(vector)))
                 index += 1
         db.add(AuditLog(actor=actor.get("username", "admin"), action="knowledge.upload", resource_type="document", resource_id=doc_id))
         db.commit()
@@ -802,6 +825,12 @@ def delete_document(doc_id: str, db: Session = Depends(get_db), actor: dict = De
     d = db.get(Document, doc_id)
     if not d:
         raise HTTPException(404, "Document not found")
+    # Clean up associated chunk vectors explicitly
+    chunks = db.execute(select(DocumentChunk).where(DocumentChunk.document_id == doc_id)).scalars().all()
+    for c in chunks:
+        cv = db.get(ChunkVector, c.id)
+        if cv:
+            db.delete(cv)
     db.delete(d)
     db.add(AuditLog(actor=actor.get("username", "admin"), action="knowledge.delete", resource_type="document", resource_id=doc_id))
     db.commit()
@@ -1061,19 +1090,27 @@ def project_out(p: Project, db: Session | None = None):
     }
 
 @app.post("/api/projects/submit")
-def submit_project(payload: ProjectSubmit, db: Session = Depends(get_db)):
-    """Public submission endpoint for student and faculty innovators."""
+def submit_project(payload: ProjectSubmit, request: Request, db: Session = Depends(get_db)):
+    """Public submission endpoint for student and faculty innovators with rate limiting & sanitization."""
+    check_rate_limit(request, limit=60, window_sec=60)
+    
+    # Strip HTML tags to prevent stored XSS attacks
+    clean_title = re.sub(r"<[^>]+>", "", payload.title).strip()
+    clean_problem = re.sub(r"<[^>]+>", "", payload.problem).strip()
+    clean_method = re.sub(r"<[^>]+>", "", payload.methodology).strip()
+    clean_author = re.sub(r"<[^>]+>", "", payload.author_name).strip()
+
     proj_id = f"PROJ-{secrets_id()}"
     p = Project(
         id=proj_id,
-        title=payload.title,
-        problem=payload.problem,
-        methodology=payload.methodology,
+        title=clean_title,
+        problem=clean_problem,
+        methodology=clean_method,
         technologies=payload.technologies,
         outcomes=payload.outcomes,
         societal_impact=payload.societal_impact,
         demo_url=payload.demo_url,
-        author_name=payload.author_name,
+        author_name=clean_author,
         author_type=payload.author_type,
         diagram_url=payload.diagram_url,
         approved=False
