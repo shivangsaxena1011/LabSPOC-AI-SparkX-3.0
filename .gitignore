@@ -11,4 +11,5 @@ out/
 *.db
 *.sqlite3
 **/uploads/
+*.zip
 .DS_Store

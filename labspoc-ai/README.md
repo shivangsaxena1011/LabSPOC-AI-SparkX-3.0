@@ -6,7 +6,7 @@
 **Target Laboratory Profile:** AI & ML Laboratory  
 **Preferred AI Provider:** Google Gemini (`gemini-2.5-flash`, `gemini-embedding-001`)  
 **Architecture:** Python FastAPI Backend, Next.js 14, React 18, TypeScript, Tailwind CSS, Three.js / React Three Fiber  
-**Release:** 0.7.1 — Final Integration, Security & Deployment Verification  
+**Release:** 0.8.0 — Production Deployment Architecture & Observability  
 
 ---
 
@@ -97,8 +97,14 @@ Automated verification pipeline that inspects every AI response before display:
 - `CODEBASE_AUDIT.md`: Comprehensive codebase audit and verification report.
 - `IMPLEMENTATION_STATUS.md`: Challenge modules & signature innovations status matrix.
 - `TECHNICAL_DEBT.md`: Technical debt assessment, resolved items, and roadmap.
-- `docs/TEST_REPORT.md`: 34/34 passing test results, Gemini benchmarks, and evaluation metrics.
+- `docs/TEST_REPORT.md`: Automated test results, Gemini benchmarks, and evaluation metrics.
+- `docs/DEPLOYMENT_TEST_REPORT.md`: Release 0.8.0 deployment & readiness test report.
+- `docs/PRODUCTION_READINESS_CHECKLIST.md`: Itemized production readiness matrix.
+- `docs/DEPLOYMENT_DECISION.md`: Cloud provider analysis, cost breakdown ($0 budget), and MeitY data governance.
 - `docs/DEPLOYMENT.md`: Container orchestration, environment variables, migrations, and backups.
+- `docs/DATABASE_MIGRATIONS.md`: Additive schema migrations, indexes, and connection pooling.
+- `docs/BACKUP_RESTORE.md`: Hot SQLite backup, pg_dump custom dumps, and disaster recovery.
+- `docs/SECURITY_ASSESSMENT.md`: Comprehensive STRIDE threat model, RBAC matrix, and data privacy.
 - `docs/SECURITY.md`: Security architecture, RBAC, input sanitization, and data governance.
 - `docs/USER_MANUAL.md`: Institutional user manual for visitors and lab administrators.
 

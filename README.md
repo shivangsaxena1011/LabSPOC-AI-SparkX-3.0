@@ -6,7 +6,7 @@
 **Target Laboratory Profile:** AI & ML Laboratory  
 **Preferred AI Provider:** Google Gemini (`gemini-2.5-flash`, `gemini-embedding-001`)  
 **Architecture:** Python FastAPI Backend, Next.js 14, React 18, TypeScript, Tailwind CSS, Three.js / React Three Fiber  
-**Release:** 0.7.1 — Final Integration, Security & Deployment Verification  
+**Release:** 0.8.0 — Production Deployment Architecture & Observability  
 
 ---
 
@@ -97,9 +97,15 @@ Automated verification pipeline that inspects every AI response before display:
 - [`CODEBASE_AUDIT.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/CODEBASE_AUDIT.md): Comprehensive codebase audit and verification report.
 - [`IMPLEMENTATION_STATUS.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/IMPLEMENTATION_STATUS.md): Challenge modules & signature innovations status matrix.
 - [`TECHNICAL_DEBT.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/TECHNICAL_DEBT.md): Technical debt assessment, resolved items, and roadmap.
-- [`TEST_REPORT.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/TEST_REPORT.md): 34/34 passing test results, Gemini benchmarks, and evaluation metrics.
+- [`TEST_REPORT.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/TEST_REPORT.md): Automated test results, Gemini benchmarks, and evaluation metrics.
+- [`DEPLOYMENT_TEST_REPORT.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/DEPLOYMENT_TEST_REPORT.md): Release 0.8.0 deployment & readiness test report.
+- [`PRODUCTION_READINESS_CHECKLIST.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/PRODUCTION_READINESS_CHECKLIST.md): Itemized production readiness matrix.
+- [`DEPLOYMENT_DECISION.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/DEPLOYMENT_DECISION.md): Cloud provider analysis, cost breakdown ($0 budget), and MeitY data governance.
 - [`DEPLOYMENT.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/DEPLOYMENT.md): Container orchestration, environment variables, migrations, and backups.
-- [`SECURITY.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/SECURITY.md): Security architecture, RBAC, input sanitization, and data governance.
+- [`DATABASE_MIGRATIONS.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/DATABASE_MIGRATIONS.md): Additive schema migrations, indexes, and connection pooling.
+- [`BACKUP_RESTORE.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/BACKUP_RESTORE.md): Hot SQLite backup, pg_dump custom dumps, and disaster recovery.
+- [`SECURITY_ASSESSMENT.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/SECURITY_ASSESSMENT.md): Comprehensive STRIDE threat model, RBAC matrix, and data privacy.
+- [`SECURITY.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/SECURITY.md): Security architecture summary and vulnerability policy.
 - [`USER_MANUAL.md`](file:///C:/Users/Project/LabSPOC%20AI%20SparkX%203.0/USER_MANUAL.md): Institutional user manual for visitors and lab administrators.
 
 ---

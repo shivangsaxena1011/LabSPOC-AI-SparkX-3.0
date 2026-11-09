@@ -30,6 +30,10 @@ from .retrieval import retrieve, find_asset, STOP
 from .llm import generate_grounded_answer
 from .auth import require_admin, require_superadmin, login_user, hash_password
 from .embeddings import embed_text
+from .storage import get_storage
+
+START_TIME = time.time()
+storage = get_storage()
 
 # Configure structured application logging
 logging.basicConfig(
@@ -99,8 +103,14 @@ app = FastAPI(
 )
 
 @app.middleware("http")
-async def add_security_headers(request: Request, call_next):
+async def add_security_and_observability_headers(request: Request, call_next):
+    req_id = request.headers.get("X-Request-ID") or uuid4().hex[:12]
+    request.state.request_id = req_id
+    t0 = time.perf_counter()
     response = await call_next(request)
+    duration_ms = (time.perf_counter() - t0) * 1000
+    response.headers["X-Request-ID"] = req_id
+    response.headers["X-Response-Time-MS"] = f"{duration_ms:.2f}"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-XSS-Protection"] = "1; mode=block"
@@ -233,6 +243,82 @@ def health():
         "llm_provider": settings.llm_provider,
         "gemini_configured": bool(settings.gemini_api_key) if settings.llm_provider.lower() == "gemini" else False,
         "admin_configured": bool(settings.admin_api_key or settings.jwt_secret or settings.admin_password)
+    }
+
+@app.get("/api/ready")
+def readiness(db: Session = Depends(get_db)):
+    """Production readiness probe inspecting DB connection, storage readiness, and LLM provider."""
+    checks = {}
+    is_ready = True
+
+    # 1. Database connectivity
+    try:
+        db.execute(text("SELECT 1"))
+        checks["database"] = {"status": "ok", "dialect": engine.dialect.name}
+    except Exception as e:
+        checks["database"] = {"status": "error", "error": str(e)}
+        is_ready = False
+
+    # 2. Storage connectivity
+    try:
+        storage_check = storage.health_check()
+        checks["storage"] = storage_check
+        if storage_check.get("status") != "ok":
+            is_ready = False
+    except Exception as e:
+        checks["storage"] = {"status": "error", "error": str(e)}
+        is_ready = False
+
+    # 3. LLM readiness
+    checks["ai_engine"] = {
+        "provider": settings.llm_provider,
+        "model": settings.gemini_model if settings.llm_provider.lower() == "gemini" else "extractive-fallback",
+        "configured": bool(settings.gemini_api_key) if settings.llm_provider.lower() == "gemini" else True
+    }
+
+    status_code = status.HTTP_200_OK if is_ready else status.HTTP_503_SERVICE_UNAVAILABLE
+    return {
+        "status": "ready" if is_ready else "not_ready",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "version": settings.app_version,
+        "checks": checks
+    }
+
+@app.get("/api/admin/system/metrics")
+def admin_system_metrics(db: Session = Depends(get_db), actor: dict = Depends(require_admin)):
+    """Administrator-facing system observability metrics (requires admin or editor)."""
+    uptime = time.time() - START_TIME
+    
+    counts = {
+        "users": db.execute(select(func.count(User.id))).scalar() or 0,
+        "zones": db.execute(select(func.count(LabZone.id))).scalar() or 0,
+        "assets": db.execute(select(func.count(Asset.id))).scalar() or 0,
+        "documents_approved": db.execute(select(func.count(Document.id)).where(Document.status == "approved")).scalar() or 0,
+        "documents_pending": db.execute(select(func.count(Document.id)).where(Document.status != "approved")).scalar() or 0,
+        "chunks": db.execute(select(func.count(DocumentChunk.id))).scalar() or 0,
+        "chunk_vectors": db.execute(select(func.count(ChunkVector.chunk_id))).scalar() or 0,
+        "projects_approved": db.execute(select(func.count(Project.id)).where(Project.approved == True)).scalar() or 0,
+        "projects_pending": db.execute(select(func.count(Project.id)).where(Project.approved == False)).scalar() or 0,
+        "sessions": db.execute(select(func.count(VisitSession.id))).scalar() or 0,
+        "analytics_events": db.execute(select(func.count(AnalyticsEvent.id))).scalar() or 0,
+        "audit_logs": db.execute(select(func.count(AuditLog.id))).scalar() or 0,
+    }
+
+    return {
+        "service": settings.app_name,
+        "version": settings.app_version,
+        "environment": settings.environment,
+        "uptime_seconds": round(uptime, 1),
+        "database_engine": engine.dialect.name,
+        "storage_backend": settings.storage_backend,
+        "storage_health": storage.health_check(),
+        "llm_configuration": {
+            "provider": settings.llm_provider,
+            "generation_model": settings.gemini_model,
+            "embedding_model": settings.embedding_model,
+            "api_key_configured": bool(settings.gemini_api_key)
+        },
+        "inventory_metrics": counts
     }
 
 @app.get("/api/config/public")
@@ -513,13 +599,13 @@ async def upload_asset_photo(
         return {**photo_out(existing), "duplicate": True}
 
     photo_id = str(uuid4())
-    storage = f"{photo_id}{suffix}"
-    (MEDIA_DIR / storage).write_bytes(data)
+    storage_key = f"{photo_id}{suffix}"
+    storage.save(f"media/{storage_key}", data, content_type=signatures[suffix][1])
     photo = AssetPhoto(
         id=photo_id,
         asset_id=asset_id,
         filename=Path(file.filename or "photo").name,
-        storage_name=storage,
+        storage_name=storage_key,
         content_type=signatures[suffix][1],
         sha256=digest,
         caption=caption[:500]
@@ -535,7 +621,7 @@ def delete_asset_photo(photo_id: str, db: Session = Depends(get_db), actor: dict
     photo = db.get(AssetPhoto, photo_id)
     if not photo:
         raise HTTPException(404, "Photo not found")
-    (MEDIA_DIR / photo.storage_name).unlink(missing_ok=True)
+    storage.delete(f"media/{photo.storage_name}")
     db.delete(photo)
     db.add(AuditLog(actor=actor.get("username", "admin"), action="photo.delete", resource_type="photo", resource_id=photo_id))
     db.commit()
@@ -668,15 +754,22 @@ def create_graph_link(payload: LinkCreate, db: Session = Depends(get_db), actor:
 # KNOWLEDGE INGESTION & HYBRID RAG (Module 3)
 # -----------------------------------------------------------------------------
 
-def extract_file(path: Path, suffix: str):
+import io
+
+def extract_file(path_or_bytes, suffix: str):
+    if isinstance(path_or_bytes, (bytes, bytearray)):
+        raw_bytes = bytes(path_or_bytes)
+    else:
+        raw_bytes = Path(path_or_bytes).read_bytes()
+
     if suffix == ".pdf":
-        reader = PdfReader(str(path))
+        reader = PdfReader(io.BytesIO(raw_bytes))
         return [(i + 1, page.extract_text() or "") for i, page in enumerate(reader.pages)]
     if suffix == ".docx":
-        d = DocxDocument(str(path))
+        d = DocxDocument(io.BytesIO(raw_bytes))
         return [(None, "\n".join(p.text for p in d.paragraphs))]
     if suffix in {".txt", ".md"}:
-        return [(None, path.read_text(encoding="utf-8", errors="ignore"))]
+        return [(None, raw_bytes.decode("utf-8", errors="ignore"))]
     raise HTTPException(415, "Supported formats: PDF, DOCX, TXT, MD")
 
 def split_chunks(text: str, size: int = 1000, overlap: int = 150):
@@ -716,8 +809,7 @@ async def upload_document(
 
     doc_id = str(uuid4())
     safe_name = Path(file.filename or "document").name
-    path = Path(settings.upload_dir) / f"{doc_id}{suffix}"
-    path.write_bytes(data)
+    storage.save(f"{doc_id}{suffix}", data, content_type=file.content_type or "application/octet-stream")
 
     doc = Document(
         id=doc_id,
@@ -732,7 +824,7 @@ async def upload_document(
     db.add(doc)
 
     try:
-        pages = extract_file(path, suffix)
+        pages = extract_file(data, suffix)
         index = 0
         for page, text_content in pages:
             for chunk in split_chunks(text_content):
@@ -752,7 +844,7 @@ async def upload_document(
         db.commit()
     except Exception as e:
         db.rollback()
-        path.unlink(missing_ok=True)
+        storage.delete(f"{doc_id}{suffix}")
         logger.error(f"Failed to process uploaded file: {e}")
         raise HTTPException(500, f"Error processing document: {str(e)}")
 
@@ -831,6 +923,9 @@ def delete_document(doc_id: str, db: Session = Depends(get_db), actor: dict = De
         cv = db.get(ChunkVector, c.id)
         if cv:
             db.delete(cv)
+    # Remove from physical storage
+    doc_suffix = Path(d.filename).suffix.lower()
+    storage.delete(f"{doc_id}{doc_suffix}")
     db.delete(d)
     db.add(AuditLog(actor=actor.get("username", "admin"), action="knowledge.delete", resource_type="document", resource_id=doc_id))
     db.commit()

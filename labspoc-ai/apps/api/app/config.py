@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "LabSPOC AI API"
-    app_version: str = "0.7.1"
+    app_version: str = "0.8.0"
     database_url: str = "sqlite:///./labspoc.db"
     upload_dir: str = "./uploads"
     max_upload_mb: int = 25
@@ -24,6 +24,15 @@ class Settings(BaseSettings):
     institution_name: str = "Oriental Institute of Science & Technology, Bhopal"
     rate_limit_per_minute: int = 120
     environment: str = "development"
+
+    # Production Storage Configuration (S3-compatible / MinIO / Cloudflare R2)
+    storage_backend: str = "local"  # "local" or "s3"
+    s3_endpoint_url: str = ""       # e.g., https://<account_id>.r2.cloudflarestorage.com
+    s3_bucket_name: str = "labspoc-uploads"
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+    s3_region: str = "us-east-1"
+    s3_public_url: str = ""         # Optional CDN or public bucket endpoint prefix
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

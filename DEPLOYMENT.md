@@ -1,4 +1,4 @@
-# LabSPOC AI — Production Deployment & Operations Guide (Release 0.7.1)
+# LabSPOC AI — Production Deployment & Operations Guide (Release 0.8.0)
 
 This document provides complete deployment specifications, container orchestration instructions, environment configurations, and backup/restoration procedures for LabSPOC AI.
 
@@ -184,14 +184,14 @@ LabSPOC AI incorporates an automated, idempotent migration runner (`run_additive
 
 ---
 
-## 6. Health Monitoring and Structured Logging
+## 6. Health Monitoring, Readiness & Observability
 
-- **Health Endpoint:** `GET /api/health` returns HTTP 200 with JSON payload:
+- **Health Endpoint:** `GET /api/health` returns HTTP 200 with service metadata:
   ```json
   {
     "status": "ok",
     "service": "LabSPOC AI API",
-    "version": "0.7.1",
+    "version": "0.8.0",
     "laboratory": "AI & ML Laboratory",
     "institution": "Oriental Institute of Science & Technology, Bhopal",
     "llm_provider": "gemini",
@@ -199,5 +199,61 @@ LabSPOC AI incorporates an automated, idempotent migration runner (`run_additive
     "admin_configured": true
   }
   ```
-- **Reverse Proxy Headers:** The API inspects `X-Forwarded-For` and `X-Real-IP` when deployed behind Nginx, Traefik, or Cloudflare, maintaining accurate rate limiting and client IP logs.
-- **Structured Audit Logging:** Administrative actions (zone modification, document approval, equipment verification) are recorded immutably in the `audit_logs` table.
+- **Readiness Probe:** `GET /api/ready` evaluates database query execution, storage health, and AI engine status:
+  ```json
+  {
+    "status": "ready",
+    "timestamp": "2026-11-10T00:20:00Z",
+    "version": "0.8.0",
+    "checks": {
+      "database": { "status": "ok", "dialect": "postgresql" },
+      "storage": { "status": "ok", "backend": "s3", "bucket": "labspoc-uploads" },
+      "ai_engine": { "provider": "gemini", "model": "gemini-2.5-flash", "configured": true }
+    }
+  }
+  ```
+- **Correlation ID Tracking:** All incoming and outgoing HTTP transactions carry `X-Request-ID` and `X-Response-Time-MS` for distributed request tracing.
+- **Admin System Observability:** `GET /api/admin/system/metrics` provides authenticated real-time telemetry (uptime, database dialect, storage backend, asset counts, chunk counts, vector index counts).
+- **Reverse Proxy Headers:** The API inspects `X-Forwarded-For` and `X-Real-IP` when deployed behind reverse proxies, maintaining accurate rate limiting and client IP logs.
+
+---
+
+## 7. Zero-Cost Managed Cloud Deployment Runbook
+
+For a cost-conscious student competition deployment with 100% free-tier coverage:
+
+### Step 1: Managed PostgreSQL on Neon
+1. Create a free account at [neon.tech](https://neon.tech) and provision a project named `labspoc-db` in the Asia-South (Mumbai) or Europe (Frankfurt) region.
+2. Copy the pooled connection string:
+   `postgresql://labspoc_user:SECRET@ep-xyz.ap-south-1.aws.neon.tech/labspoc?sslmode=require`
+
+### Step 2: S3-Compatible Storage on Cloudflare R2
+1. Create a free Cloudflare account and create an R2 bucket named `labspoc-production-uploads`.
+2. Generate an S3 API Token with Read & Write permissions.
+3. Note the account endpoint: `https://<account_id>.r2.cloudflarestorage.com`.
+
+### Step 3: Backend API Deployment on Render
+1. Connect your GitHub repository to [render.com](https://render.com).
+2. Create a new **Web Service** selecting Docker environment:
+   - Root directory: `./`
+   - Dockerfile path: `./labspoc-ai/apps/api/Dockerfile`
+   - Set environment variables:
+     - `DATABASE_URL`: Your Neon PostgreSQL connection string.
+     - `STORAGE_BACKEND`: `s3`
+     - `S3_ENDPOINT_URL`: Your Cloudflare R2 endpoint URL.
+     - `S3_BUCKET_NAME`: `labspoc-production-uploads`
+     - `S3_ACCESS_KEY_ID`: Your Cloudflare R2 Access Key ID.
+     - `S3_SECRET_ACCESS_KEY`: Your Cloudflare R2 Secret Access Key.
+     - `JWT_SECRET`: A 64-hex-character cryptographically random key.
+     - `GEMINI_API_KEY`: Your Google AI Studio API key.
+     - `ENVIRONMENT`: `production`
+     - `CORS_ORIGINS`: `https://your-frontend.vercel.app`
+3. Deploy and verify readiness via `https://<render-subdomain>.onrender.com/api/ready`.
+
+### Step 4: Frontend Web Deployment on Vercel
+1. Import the repository on [vercel.com](https://vercel.com).
+2. Configure project settings:
+   - Root Directory: `labspoc-ai/apps/web`
+   - Framework Preset: `Next.js`
+   - Environment Variable: `NEXT_PUBLIC_API_URL` = `https://<render-subdomain>.onrender.com`
+3. Click **Deploy**. Vercel compiles the optimized production build and publishes to its global Edge CDN.
