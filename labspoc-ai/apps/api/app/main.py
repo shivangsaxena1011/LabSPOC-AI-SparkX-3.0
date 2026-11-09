@@ -1555,6 +1555,14 @@ def analytics(db: Session = Depends(get_db)):
     }
 
 @app.get("/api/analytics/export")
-def export_analytics(format: str = "json", db: Session = Depends(get_db), _: dict = Depends(require_admin)):
+def export_analytics(
+    format: str = "json",
+    token: str | None = None,
+    authorization: str | None = Header(default=None),
+    x_admin_key: str | None = Header(default=None),
+    db: Session = Depends(get_db)
+):
+    auth_header = authorization or (f"Bearer {token}" if token else None)
+    require_admin(authorization=auth_header, x_admin_key=x_admin_key, db=db)
     data = analytics(db)
     return data

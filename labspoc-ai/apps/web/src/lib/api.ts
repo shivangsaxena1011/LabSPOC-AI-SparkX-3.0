@@ -1,7 +1,16 @@
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/, "");
+
+export function getFullUrl(path: string): string {
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API}${cleanPath}`;
+}
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(`${API}${path}`, {
+  const url = getFullUrl(path);
+  const r = await fetch(url, {
     ...init,
     headers: {
       ...(init?.headers || {})

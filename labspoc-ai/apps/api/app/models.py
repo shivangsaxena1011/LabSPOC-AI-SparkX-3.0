@@ -91,7 +91,7 @@ class LabZone(Base):
 class AssetPhoto(Base):
     __tablename__ = "asset_photos"
     id: Mapped[str] = mapped_column(String(80), primary_key=True)
-    asset_id: Mapped[str] = mapped_column(ForeignKey("assets.id"), index=True)
+    asset_id: Mapped[str] = mapped_column(ForeignKey("assets.id", ondelete="CASCADE"), index=True)
     filename: Mapped[str] = mapped_column(String(255))
     storage_name: Mapped[str] = mapped_column(String(255), unique=True)
     content_type: Mapped[str] = mapped_column(String(80))

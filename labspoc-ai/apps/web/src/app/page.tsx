@@ -469,6 +469,23 @@ export default function OperationsWorkspace() {
     }
   }
 
+  async function downloadAnalyticsExport() {
+    try {
+      const data = await api<any>("/api/analytics/export", { headers: adminHeaders() });
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `labspoc-analytics-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }
+
   async function createGraphLink() {
     if (!linkAssetId || !linkTargetId) return;
     try {
@@ -1309,10 +1326,20 @@ export default function OperationsWorkspace() {
 
                           <button
                             onClick={() => inspectChunks(d.id)}
-                            className="btn btn-secondary text-[11px] py-1 px-2.5"
+                            className="btn btn-secondary text-[11px] py-1 px-2.5 flex items-center gap-1"
                           >
                             <Eye size={12} /> Chunks
                           </button>
+
+                          <a
+                            href={`${API}/api/knowledge/documents/${d.id}/download`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn btn-secondary text-[11px] py-1 px-2.5 flex items-center gap-1"
+                            title="Download document"
+                          >
+                            <Download size={12} /> File
+                          </a>
 
                           {isAuthorized && (
                             <>
@@ -1487,13 +1514,14 @@ export default function OperationsWorkspace() {
                       Consent-aware aggregation of visitor tours, hotspots inspected, and question topics
                     </p>
                   </div>
-                  <a
-                    href={`${API}/api/analytics/export`}
-                    target="_blank"
-                    className="btn btn-secondary text-xs"
+                  <button
+                    onClick={downloadAnalyticsExport}
+                    disabled={!isAuthorized}
+                    className="btn btn-secondary text-xs flex items-center gap-1.5"
+                    title={isAuthorized ? "Export Analytics JSON" : "Sign in as administrator to export analytics"}
                   >
                     <Download size={13} /> Export JSON
-                  </a>
+                  </button>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-3">

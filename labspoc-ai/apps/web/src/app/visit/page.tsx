@@ -30,7 +30,7 @@ import {
   Volume2,
   X
 } from "lucide-react";
-import { api, API } from "@/lib/api";
+import { api, API, getFullUrl } from "@/lib/api";
 
 const LabScene = dynamic(() => import("@/components/LabScene"), { ssr: false });
 
@@ -693,7 +693,7 @@ export default function VisitorExperience() {
                       <div className="grid grid-cols-2 gap-2">
                         {activeAsset.photos.map((p) => (
                           <div key={p.id} className="group relative overflow-hidden rounded-lg border border-slate-200">
-                            <img src={p.url} alt={p.caption} className="h-24 w-full object-cover" />
+                            <img src={getFullUrl(p.url)} alt={p.caption} className="h-24 w-full object-cover" />
                             {p.caption && (
                               <div className="absolute inset-x-0 bottom-0 bg-black/60 p-1 text-[10px] text-white truncate">
                                 {p.caption}

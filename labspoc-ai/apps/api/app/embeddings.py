@@ -3,6 +3,8 @@ from .config import settings
 
 
 def embed_text(text: str) -> list[float] | None:
+    if not text or not text.strip():
+        return None
     if not settings.semantic_retrieval_enabled or settings.llm_provider.lower() != "gemini" or not settings.gemini_api_key:
         return None
     try:
