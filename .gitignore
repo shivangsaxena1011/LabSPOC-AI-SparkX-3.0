@@ -12,4 +12,6 @@ out/
 *.sqlite3
 **/uploads/
 *.zip
+!submission/**
+!submission/**/*.zip
 .DS_Store

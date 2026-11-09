@@ -6,7 +6,7 @@
 **Target Laboratory Profile:** AI & ML Laboratory  
 **Preferred AI Provider:** Google Gemini (`gemini-2.5-flash`, `gemini-embedding-001`)  
 **Architecture:** Python FastAPI Backend, Next.js 14, React 18, TypeScript, Tailwind CSS, Three.js / React Three Fiber  
-**Release:** 0.8.0 — Production Deployment Architecture & Observability  
+**Release:** 0.9.0 — SPARKX 3.0 Final Submission Package  
 
 ---
 
