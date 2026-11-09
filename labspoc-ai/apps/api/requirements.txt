@@ -1,0 +1,9 @@
+fastapi==0.115.12
+uvicorn[standard]==0.34.0
+sqlalchemy==2.0.38
+pydantic-settings==2.8.1
+python-multipart==0.0.20
+pypdf==5.3.1
+python-docx==1.1.2
+python-dotenv==1.0.1
+google-genai>=1.0.0,<2.0.0
