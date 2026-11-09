@@ -49,7 +49,7 @@
 - [x] **Input Sanitization:** HTML/script tag stripping applied to public project submissions. (`PASSED`)
 - [x] **Security Headers:** `nosniff`, `SAMEORIGIN`, `1; mode=block`, and `strict-origin-when-cross-origin`. (`PASSED`)
 - [x] **No Client Secret Exposure:** API keys and passwords strictly contained in server environment. (`PASSED`)
-- [x] **Visitor Privacy:** Opt-in analytics consent; zero PII collected; exportable session summary. (`PASSED`)
+- [x] **Visitor Privacy:** Opt-in analytics consent; zero direct PII required; DPDP Act 2023 pseudonymized session design; exportable departure summary. (`PASSED`)
 
 ### 6. Frontend Production Quality
 - [x] **Next.js Production Compilation:** `npm run build` succeeds with zero errors (Exit code 0). (`PASSED`)
@@ -65,4 +65,4 @@
 - [x] **Orchestration:** Multi-container `docker-compose.yml` with healthchecks and isolated networks. (`PASSED`)
 - [x] **Environment Examples:** Complete `.env.example` and `.env.production.example` authored. (`PASSED`)
 - [x] **Deployment Documentation:** In-depth deployment guide in `DEPLOYMENT.md` and `DEPLOYMENT_DECISION.md`. (`PASSED`)
-- [ ] **Live Cloud Deployment Execution:** `BLOCKED` (Requires user provisioning of live cloud credentials and domain).
+- [ ] **Live Public Cloud Hosting:** `READY (UNPROVISIONED)` (Deployment configuration and container orchestration verified; live public cloud provisioning blocked pending institutional cloud subscription and domain DNS).

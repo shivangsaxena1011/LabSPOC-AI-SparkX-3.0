@@ -458,8 +458,9 @@ def create_deck():
     # SLIDE 13: Testing Methodology & Test Results
     # -------------------------------------------------------------
     slide13 = add_base_slide("Testing Methodology & Automated Verification")
-    add_card(slide13, 0.8, 1.7, 5.6, 5.0, "Automated Test Suite (40/40 Passed)", [
-        "Execution Time: 27.80 seconds (100% pass rate).",
+    add_card(slide13, 0.8, 1.7, 5.6, 5.0, "Automated Test Suite (41 Passed / 1 Skipped)", [
+        "Execution: 42 collected tests; live Gemini tests skip gracefully when unconfigured.",
+        "Two-Tier Evidence Gate: Verifies citation bounds and claim-to-passage lexical alignment.",
         "Workflow Tests (WF-01 to WF-17): Verified admin login, RBAC hierarchy, zone editing, equipment verification, document approval, project submission, and SAEG graph links.",
         "Production Deployment Tests: Verified /api/ready, /api/health, X-Request-ID correlation headers, and StorageAdapter path traversal protections.",
         "Eager Retrieval Test: Verified elimination of N+1 database queries during vector search.",
@@ -489,11 +490,11 @@ def create_deck():
         "PBKDF2-HMAC-SHA256: 240,000 hash iterations with 16-byte random salts and constant-time comparison.",
         "HS256 JWT Bearer Tokens: 256-bit secret, 12h expiry, database active-user checks on every call.",
         "Three-Tier RBAC: admin (full mutation), editor (content upload/verify), viewer (read-only).",
-        "Reverse-Proxy Rate Limiting: Sliding window inspecting X-Forwarded-For to protect against DoS.",
+        "Spoof-Resistant Rate Limiting: Sliding window with trusted proxy verification rejecting spoofed headers.",
         "Input Sanitization: Regex HTML stripping on project submissions; magic binary header sniffing on image uploads."
     ])
     add_card(slide14, 6.8, 1.7, 5.6, 5.0, "Data Privacy & Governance (DPDP Act 2023)", [
-        "Zero PII Collection: No names, phone numbers, email addresses, or biometric data stored from visitors.",
+        "Zero Direct PII Required: No names, phone numbers, or emails solicited; sessions scoped under ephemeral UUIDs.",
         "Opt-In Consent Gating: Interaction events dropped in-memory if consent toggle is disabled.",
         "Immutable Audit Logs: Append-only audit records tracking user, action, resource, and timestamp.",
         "Defensive Security Headers: nosniff, SAMEORIGIN, 1; mode=block, strict-origin-when-cross-origin."

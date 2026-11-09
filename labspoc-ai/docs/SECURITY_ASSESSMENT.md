@@ -24,7 +24,7 @@ This security assessment provides a systematic audit of the security posture, th
 | **Path Traversal Protection** | StorageAdapter path canonicalization & boundary verification | **HARDENED** |
 | **Defensive HTTP Headers** | `nosniff`, `SAMEORIGIN`, `1; mode=block`, `strict-origin-when-cross-origin` | **ACTIVE** |
 | **AI Hallucination Guardrails** | Evidence Gate citation verification & honest abstention | **ACTIVE & BENCHMARKED** |
-| **Visitor Privacy** | Strict opt-in consent gating; zero PII collection; session summaries | **PRIVACY BY DESIGN** |
+| **Visitor Privacy** | Strict opt-in consent gating; pseudonymized session UUIDs; DPDP Act 2023 alignment; zero direct PII required | **PRIVACY BY DESIGN** |
 
 ---
 
@@ -59,11 +59,12 @@ This security assessment provides a systematic audit of the security posture, th
   - Public config endpoint `/api/config/public` returns only institutional metadata (lab name, language codes, model identifier).
   - Unapproved documents (`status != 'approved'`) are strictly excluded from RAG retrieval and vector search.
 
-### 2.5 Denial of Service (DoS)
-- **Threat:** High-frequency API calls exhausting Google Gemini API quotas or crashing backend database connection pools.
+### 2.5 Denial of Service (DoS) & Rate Limiting Hardening
+- **Threat:** High-frequency API calls exhausting Google Gemini API quotas, header spoofing via untrusted proxy headers, or crashing backend database connection pools.
 - **Defenses Implemented:**
   - Sliding-window rate limiting (120 req/min for general endpoints; 60 req/min for public submissions; 20 req/min for login attempts).
-  - Reverse-proxy header awareness (`X-Forwarded-For` and `X-Real-IP`) ensures clients behind reverse proxies cannot bypass rate limits.
+  - **Spoof-Resistant Proxy Verification:** `get_client_ip()` strictly validates the direct connection peer against a configured trusted proxy set (`127.0.0.1`, `::1`, `localhost`). Forwarded headers (`X-Forwarded-For`, `X-Real-IP`) are rejected when arriving from untrusted external clients, preventing client header spoofing.
+  - **Single-Node vs Multi-Node Scope:** The current in-memory sliding window provides zero-latency protection per application process. For multi-replica clustered deployments, horizontal synchronization is documented via a shared Redis token-bucket architecture.
   - File upload ceiling capped at 25 MB (`max_upload_mb`).
 
 ### 2.6 Elevation of Privilege
@@ -107,9 +108,12 @@ This security assessment provides a systematic audit of the security posture, th
 
 ---
 
-## 5. Visitor Privacy & Data Retention Policy
+## 5. Visitor Privacy, Data-Flow Governance & Retention Policy
 
-- **Opt-In Analytics Consent:** During onboarding at `/visit`, visitors are presented with an explicit consent choice. When `consent: false`, analytics events are discarded in memory without writing to `analytics_events`.
-- **Zero PII Collection:** The platform collects zero names, phone numbers, email addresses, student IDs, or biometric data from visitors.
-- **Session Summaries:** Visitors may review and copy their complete session interactions prior to departure via the session summary view.
-- **Audit Log Immutability:** Access records in `audit_logs` are preserved for institutional auditing and compliance review.
+- **No Direct Personal Identifiers Required or Solicited:** The platform does not require user registration for visitors, and does not solicit, require, or store personal identifiers such as full names, phone numbers, email addresses, student IDs, or biometric profiles in any structured data schema.
+- **Pseudonymization under Ephemeral Session UUIDs:** All interactive visitor state (selected persona, declared agenda, conversation history, and telemetry) is tied exclusively to a randomly generated, unlinked UUID (`session_id`).
+- **Strict Opt-In Telemetry (DPDP Act 2023 Conformance):** Telemetry tracking (e.g. `zone_view`, `hotspot_select`, `tour_started`) is strictly conditional on explicit visitor consent at onboarding. If the visitor selects non-consent, telemetry events are dropped in memory without disk persistence.
+- **Visitor-Supplied Free-Text Handling:** Visitor agendas and conversational questions are processed in memory for retrieval and contextual answering, stored only under the ephemeral session identifier to enable the departure session review, and never shared with third-party tracking networks.
+- **Departure Transparency:** Visitors can inspect and copy their complete session interactions and verified citations prior to departure via the `/visit` Session Summary view.
+- **Rate-Limiter Privacy & Proxy Protection:** IP addresses used by the in-memory rate-limiter sliding window are stored ephemerally in RAM and evicted after 60 seconds; trusted reverse proxies are strictly validated to prevent IP spoofing or untrusted header injection.
+- **Audit Log Immutability:** Administrative changes (asset updates, document uploads, approvals) are permanently recorded in `audit_logs` with timestamps, actor usernames, and actions for institutional governance.

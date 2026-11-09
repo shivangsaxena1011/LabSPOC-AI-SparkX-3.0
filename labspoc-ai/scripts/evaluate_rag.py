@@ -22,6 +22,7 @@ from app.llm import generate_grounded_answer
 BENCHMARK_DOCUMENTS = [
     {
         "filename": "NVIDIA_DGX_Station_A100_SOP.txt",
+        "disclaimer": "Synthetic demonstration record for SPARKX 3.0 benchmark",
         "category": "sop",
         "chunks": [
             "The NVIDIA DGX Station A100 delivers 2.5 petaFLOPS of AI performance with 320GB total GPU memory across 4x NVIDIA A100 80GB Tensor Core GPUs. System memory consists of 512GB DDR4 RAM and 7.68TB NVMe storage. Power requirements necessitate a dedicated 15A circuit at 200-240V AC, with a maximum system power consumption rating of 1500W under peak sustained synthetic matrix multiplication workloads.",

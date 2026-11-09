@@ -139,17 +139,24 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-# In-memory sliding rate limiter with reverse proxy header support
+# In-memory sliding rate limiter with reverse proxy header protection
 _rate_limits = defaultdict(list)
+TRUSTED_PROXIES = {p.strip() for p in getattr(settings, "trusted_proxies", "127.0.0.1,::1,localhost").split(",") if p.strip()}
 
 def get_client_ip(request: Request) -> str:
-    forwarded_for = request.headers.get("X-Forwarded-For")
-    if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
-    real_ip = request.headers.get("X-Real-IP")
-    if real_ip:
-        return real_ip.strip()
-    return request.client.host if request.client else "127.0.0.1"
+    """
+    Extracts client IP address safely without trusting spoofed proxy headers from untrusted clients.
+    X-Forwarded-For and X-Real-IP are only inspected when the immediate client is a verified reverse proxy.
+    """
+    direct_client = request.client.host if request.client else "127.0.0.1"
+    if direct_client in TRUSTED_PROXIES or direct_client.startswith("127."):
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            return forwarded_for.split(",")[0].strip()
+        real_ip = request.headers.get("X-Real-IP")
+        if real_ip:
+            return real_ip.strip()
+    return direct_client
 
 def check_rate_limit(request: Request, limit: int = 120, window_sec: int = 60):
     client_ip = get_client_ip(request)
@@ -1160,11 +1167,12 @@ def ask(payload: QueryRequest, request: Request, db: Session = Depends(get_db)):
             "top_k": len(passages)
         },
         "evidence_gate": {
-            "verified_grounding": True,
+            "verified_grounding": bool(llm_res.get("gate_passed", False)) if llm_res.get("answer") else True,
             "abstention_triggered": llm_res.get("abstention_triggered", False),
             "gate_passed": llm_res.get("gate_passed", True),
             "gate_reason": llm_res.get("reason", "verified_grounding"),
-            "citations_validated": llm_res.get("citations", [])
+            "citations_validated": llm_res.get("citations", []),
+            "claim_level_verified": llm_res.get("claim_level_verified", True)
         },
         "note": "Answers are strictly constrained to approved laboratory documentation and registered equipment records."
     }
@@ -1394,7 +1402,14 @@ def plan_tour(payload: TourRequest, db: Session = Depends(get_db)):
             "verified": bool(a.verified_at)
         })
 
-    # Score projects
+    # Score projects (verification status derived from links to verified hardware)
+    verified_asset_ids = {a.id for a in assets if a.verified_at}
+    project_links = db.execute(select(AssetProjectLink)).scalars().all()
+    project_to_verified_assets = defaultdict(set)
+    for pl in project_links:
+        if pl.asset_id in verified_asset_ids:
+            project_to_verified_assets[pl.project_id].add(pl.asset_id)
+
     for p in projects:
         text_corp = f"{p.title} {p.problem} {p.technologies} {p.outcomes}".lower()
         match_score = sum(2 for t in interest_tokens if t in text_corp)
@@ -1406,6 +1421,10 @@ def plan_tour(payload: TourRequest, db: Session = Depends(get_db)):
         elif is_industry and p.demo_url:
             match_score += 3
 
+        has_verified_hardware = len(project_to_verified_assets.get(p.id, set())) > 0
+        if has_verified_hardware:
+            match_score += 1
+
         candidates.append({
             "id": p.id,
             "title": p.title,
@@ -1414,7 +1433,7 @@ def plan_tour(payload: TourRequest, db: Session = Depends(get_db)):
             "zone": "Research Workspace",
             "zone_coords": [2.0, -1.0],
             "score": match_score,
-            "verified": True
+            "verified": has_verified_hardware
         })
 
     candidates.sort(key=lambda x: x["score"], reverse=True)
@@ -1461,7 +1480,7 @@ def plan_tour(payload: TourRequest, db: Session = Depends(get_db)):
         "duration_minutes": budget,
         "allocated_minutes": elapsed,
         "stops": stops,
-        "planning_note": "Tour compiler verified each stop against approved records and respected the strict duration constraint."
+        "planning_note": "Tour compiled from approved laboratory records and verified project links, strictly constrained to the allocated duration."
     }
 
 @app.post("/api/visits/{visit_id}/events")

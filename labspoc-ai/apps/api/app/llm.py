@@ -2,6 +2,65 @@
 from .config import settings
 import re
 
+GATE_STOPWORDS = {
+    "the", "and", "is", "in", "it", "to", "of", "for", "with", "on", "at", "by", "from",
+    "up", "about", "into", "over", "after", "this", "that", "these", "those", "are",
+    "was", "were", "been", "being", "have", "has", "had", "do", "does", "did", "but",
+    "or", "as", "if", "when", "than", "because", "while", "where", "how", "all", "any",
+    "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not",
+    "only", "own", "same", "so", "too", "very", "can", "will", "just", "should",
+    "now", "source", "evidence", "page", "content", "record", "laboratory", "oist"
+}
+
+def verify_claim_evidence_support(text: str, evidence: list[dict]) -> tuple[bool, str, float]:
+    """
+    Substantive Claim-Level Support Verification:
+    Splits generated text into claim units/sentences. For every citation marker [k]
+    encountered in a sentence, checks that the asserting sentence actually shares
+    salient content tokens or key entities with evidence passage k (1-indexed).
+    
+    Returns (passed, reason, support_ratio).
+    """
+    raw_sentences = re.split(r"(?<=[.!?\n])\s+", text)
+    sentences = [s.strip() for s in raw_sentences if s.strip()]
+    
+    total_claims = 0
+    supported_claims = 0
+
+    for sent in sentences:
+        markers = [int(x) for x in re.findall(r"\[(\d+)\]", sent)]
+        if not markers:
+            continue
+            
+        # Clean sentence words (excluding citation tags)
+        cleaned_sent = re.sub(r"\[\d+\]", " ", sent)
+        claim_tokens = {
+            w.lower() for w in re.findall(r"\b[a-zA-Z0-9_\u0900-\u097F]+\b", cleaned_sent)
+            if len(w) >= 3 and w.lower() not in GATE_STOPWORDS
+        }
+        
+        for k in markers:
+            total_claims += 1
+            if k < 1 or k > len(evidence):
+                return False, f"invalid_citation_index_{k}", 0.0
+                
+            passage_text = evidence[k - 1].get("text", "")
+            passage_tokens = {
+                w.lower() for w in re.findall(r"\b[a-zA-Z0-9_\u0900-\u097F]+\b", passage_text)
+                if len(w) >= 3 and w.lower() not in GATE_STOPWORDS
+            }
+            
+            # Substantive intersection
+            overlap = claim_tokens & passage_tokens
+            # If the claim sentence has at least 3 content tokens, require >= 1 salient overlap
+            if len(claim_tokens) >= 3 and len(overlap) < 1:
+                return False, f"unsupported_claim_for_citation_[{k}]", 0.0
+                
+            supported_claims += 1
+
+    ratio = (supported_claims / total_claims) if total_claims > 0 else 1.0
+    return True, "claim_support_verified", ratio
+
 def generate_grounded_answer(
     question: str,
     evidence: list[dict],
@@ -15,7 +74,9 @@ def generate_grounded_answer(
         "gate_passed": bool,
         "abstention_triggered": bool,
         "reason": str,
-        "citations": list[int]
+        "citations": list[int],
+        "claim_level_verified": bool,
+        "support_ratio": float
     }
     """
     if settings.llm_provider.lower() != "gemini" or not settings.gemini_api_key:
@@ -24,7 +85,9 @@ def generate_grounded_answer(
             "gate_passed": False,
             "abstention_triggered": False,
             "reason": "gemini_provider_unconfigured",
-            "citations": []
+            "citations": [],
+            "claim_level_verified": False,
+            "support_ratio": 0.0
         }
 
     try:
@@ -87,10 +150,12 @@ Return only your verified answer text with appropriate citation brackets [1], [2
                 "gate_passed": False,
                 "abstention_triggered": True,
                 "reason": "empty_model_response",
-                "citations": []
+                "citations": [],
+                "claim_level_verified": False,
+                "support_ratio": 0.0
             }
 
-        # Evidence Gate: Verify citations
+        # Evidence Gate Tier 1: Verify citation indices
         markers = [int(x) for x in re.findall(r"\[(\d+)\]", text)]
         invalid_markers = [x for x in markers if x < 1 or x > len(evidence)]
         if invalid_markers:
@@ -99,7 +164,9 @@ Return only your verified answer text with appropriate citation brackets [1], [2
                 "gate_passed": False,
                 "abstention_triggered": False,
                 "reason": f"invalid_citation_indices_{invalid_markers}",
-                "citations": markers
+                "citations": markers,
+                "claim_level_verified": False,
+                "support_ratio": 0.0
             }
 
         abstention = any(term in text.lower() for term in (
@@ -115,7 +182,22 @@ Return only your verified answer text with appropriate citation brackets [1], [2
                 "gate_passed": False,
                 "abstention_triggered": False,
                 "reason": "uncited_factual_claim",
-                "citations": []
+                "citations": [],
+                "claim_level_verified": False,
+                "support_ratio": 0.0
+            }
+
+        # Evidence Gate Tier 2: Substantive Claim-to-Passage Alignment
+        claims_passed, claim_reason, support_ratio = verify_claim_evidence_support(text, evidence)
+        if not claims_passed:
+            return {
+                "answer": None,
+                "gate_passed": False,
+                "abstention_triggered": False,
+                "reason": claim_reason,
+                "citations": markers,
+                "claim_level_verified": False,
+                "support_ratio": support_ratio
             }
 
         return {
@@ -123,7 +205,9 @@ Return only your verified answer text with appropriate citation brackets [1], [2
             "gate_passed": True,
             "abstention_triggered": abstention,
             "reason": "gate_passed_with_citations" if markers else "gate_passed_with_abstention",
-            "citations": sorted(list(set(markers)))
+            "citations": sorted(list(set(markers))),
+            "claim_level_verified": True,
+            "support_ratio": support_ratio
         }
 
     except Exception as e:
@@ -132,5 +216,7 @@ Return only your verified answer text with appropriate citation brackets [1], [2
             "gate_passed": False,
             "abstention_triggered": False,
             "reason": f"provider_error_{type(e).__name__}",
-            "citations": []
+            "citations": [],
+            "claim_level_verified": False,
+            "support_ratio": 0.0
         }

@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     lab_name: str = "AI & ML Laboratory"
     institution_name: str = "Oriental Institute of Science & Technology, Bhopal"
     rate_limit_per_minute: int = 120
+    trusted_proxies: str = "127.0.0.1,::1,localhost"
     environment: str = "development"
 
     # Production Storage Configuration (S3-compatible / MinIO / Cloudflare R2)

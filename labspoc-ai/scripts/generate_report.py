@@ -845,7 +845,9 @@ def build_pdf():
     story.append(Paragraph(
         "Beyond unit testing, LabSPOC AI was subjected to rigorous empirical evaluation using `labspoc-ai/scripts/evaluate_rag.py`. "
         "The evaluation dataset (`docs/eval_dataset.json`) comprises 10 reference queries: 7 grounded technical queries spanning hardware specifications, "
-        "Slurm queues, and electrical safety; and 3 adversarial / out-of-scope queries designed to test hallucination resistance.", body_style
+        "Slurm queues, and electrical safety; and 3 adversarial / out-of-scope queries designed to test hallucination resistance. "
+        "<i>Notice: All evaluated equipment specifications (e.g. DGX Station A100, Slurm rules, emergency electrical procedures) and reference manuals "
+        "are synthetic demonstration benchmarks created specifically for the SPARKX 3.0 innovation challenge. They demonstrate platform capabilities and do not represent certified OIST institutional records.</i>", body_style
     ))
 
     eval_results_data = [
@@ -908,10 +910,10 @@ def build_pdf():
 
     story.append(Paragraph("<b>Compliance with the Digital Personal Data Protection (DPDP) Act 2023:</b>", h2_style))
     story.append(Paragraph("India's DPDP Act mandates strict purpose limitation, consent verification, and rights of data principals. LabSPOC AI implements:", body_style))
-    story.append(Paragraph("1. <b>Zero PII Footprint:</b> The platform never requests, stores, or transmits Personally Identifiable Information (such as names, phone numbers, Aadhaar, or emails) from visitors.", bullet_style))
+    story.append(Paragraph("1. <b>Zero Direct PII Required & Pseudonymized Sessions:</b> The platform never requests, stores, or transmits direct personal identifiers (names, emails, phone numbers, Aadhaar, student IDs) from visitors. All visitor interactions are scoped under ephemeral session UUIDs. Free-text inputs (agendas, questions) are stored ephemerally to enable the visitor's departure summary and are never shared with third-party networks.", bullet_style))
     story.append(Paragraph("2. <b>Opt-In Analytics:</b> Visitor telemetry is collected solely when the visitor clicks 'Allow Analytics' during onboarding.", bullet_style))
     story.append(Paragraph("3. <b>Right to Access & Data Portability:</b> Visitors can immediately export an immutable JSON summary of their complete interaction history before leaving the facility.", bullet_style))
-    story.append(Paragraph("4. <b>Defensive HTTP Headers:</b> The server emits `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, and strict CORS policies.", bullet_style))
+    story.append(Paragraph("4. <b>Defensive HTTP Headers & Rate Limiting:</b> The server emits `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, strict CORS policies, and spoof-resistant sliding-window rate limiting.", bullet_style))
 
     story.append(PageBreak())
 
@@ -976,7 +978,7 @@ def build_pdf():
     story.append(Paragraph(
         "LabSPOC AI successfully transforms university laboratory management by combining an interactive 3D digital twin, a two-stage hybrid RAG engine, "
         "the Spatially Anchored Evidence Graph (SAEG), the Agenda-to-Tour Compiler, and an automated Evidence Gate. "
-        "With 40/40 passing test cases, benchmarked 100% Recall@5, zero hallucinations, Docker orchestration, and a sustainable $0/month cost model, "
+        "With 41 passed automated tests (1 skipped when live Gemini API key/quota is unconfigured), benchmarked 100% Recall@5, zero hallucinations, Docker orchestration, and a sustainable $0/month cost model, "
         "LabSPOC AI provides an authoritative solution for the SPARKX 3.0 Smart Campus & Digital Twin track.", body_style
     ))
 
