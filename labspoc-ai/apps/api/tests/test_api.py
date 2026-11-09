@@ -184,3 +184,154 @@ def test_zone_layout_update_requires_admin_and_persists_coordinates():
             if zone:
                 db.delete(zone); db.commit()
         settings.admin_api_key = original
+
+
+def test_project_public_submission_and_admin_approval():
+    from app.config import settings
+    # Public user submits a project
+    submission = {
+        "title": "Autonomous Drone Path Planner",
+        "problem": "Indoor navigation in GPS-denied institutional environments requires visual SLAM.",
+        "methodology": "ROS2 and ORB-SLAM3 integration with onboard Raspberry Pi 4.",
+        "technologies": "Python, ROS2, OpenCV, PyTorch",
+        "outcomes": "Sub-10cm positioning accuracy achieved.",
+        "societal_impact": "Disaster management and search-and-rescue assistance.",
+        "demo_url": "https://github.com/oist/drone-slam",
+        "author_name": "Rohan Sharma & Priyanshi Jain",
+        "author_type": "student",
+        "diagram_url": "https://images.unsplash.com/photo-1527977966376-1c8408f9f108",
+        "related_asset_ids": []
+    }
+    sub_res = client.post("/api/projects/submit", json=submission)
+    assert sub_res.status_code == 200
+    proj_id = sub_res.json()["id"]
+    assert sub_res.json()["status"] == "pending_approval"
+
+    # Should not appear in public visitor list yet
+    pub_res = client.get("/api/projects")
+    assert pub_res.status_code == 200
+    assert not any(p["id"] == proj_id for p in pub_res.json())
+
+    # Admin approves the project
+    original = settings.admin_api_key
+    settings.admin_api_key = "test-approval-key"
+    try:
+        app_res = client.post(f"/api/projects/{proj_id}/approve", headers={"X-Admin-Key": settings.admin_api_key})
+        assert app_res.status_code == 200
+        assert app_res.json()["status"] == "approved"
+
+        # Now it must appear in public visitor list
+        pub_res2 = client.get("/api/projects")
+        assert any(p["id"] == proj_id for p in pub_res2.json())
+    finally:
+        # Cleanup
+        client.delete(f"/api/projects/{proj_id}", headers={"X-Admin-Key": settings.admin_api_key})
+        settings.admin_api_key = original
+
+
+def test_evidence_gate_structure_and_abstention():
+    # When no records match, the Evidence Gate must trigger abstention
+    res = client.post("/api/assistant/query", json={
+        "question": "What is the warp core temperature of the hyperdrive?",
+        "language": "en"
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "insufficient_evidence"
+    assert "evidence_gate" in data
+    assert data["evidence_gate"]["abstention_triggered"] is True
+    assert data["evidence_gate"]["verified_grounding"] is False
+
+
+def test_multiturn_conversation_and_history():
+    # 1. Start a visit session
+    visit_res = client.post("/api/visits", json={
+        "persona": "Undergraduate student",
+        "agenda": "Learn about AI robotics lab",
+        "duration_minutes": 5,
+        "consent_analytics": True
+    })
+    assert visit_res.status_code == 200
+    session_id = visit_res.json()["id"]
+
+    # 2. Ask first question
+    q1 = client.post("/api/assistant/query", json={
+        "question": "What workstations are installed?",
+        "session_id": session_id,
+        "language": "en"
+    })
+    assert q1.status_code == 200
+
+    # 3. Retrieve history
+    hist = client.get(f"/api/assistant/history/{session_id}")
+    assert hist.status_code == 200
+    turns = hist.json()
+    assert len(turns) >= 1
+    assert turns[0]["question"] == "What workstations are installed?"
+
+
+def test_spatially_anchored_evidence_graph_endpoints():
+    res = client.get("/api/graph/overview")
+    assert res.status_code == 200
+    graph = res.json()
+    assert graph["graph_type"] == "SpatiallyAnchoredEvidenceGraph"
+    assert "nodes" in graph
+    assert "edges" in graph
+    assert isinstance(graph["nodes"], list)
+    assert isinstance(graph["edges"], list)
+
+
+def test_agenda_to_tour_compiler_persona_budgeting():
+    from app.config import settings
+    # Register a verified test asset
+    original = settings.admin_api_key
+    settings.admin_api_key = "tour-test-key"
+    asset_id = "TOUR-GPU-01"
+    try:
+        client.post("/api/assets", json={
+            "id": asset_id,
+            "name": "NVIDIA DGX Station A100",
+            "category": "compute",
+            "zone": "Computing Bay",
+            "description": "Multi-GPU AI model training workstation",
+            "manufacturer": "NVIDIA",
+            "model_number": "DGX-A100"
+        }, headers={"X-Admin-Key": settings.admin_api_key})
+        client.post(f"/api/assets/{asset_id}/verify", headers={"X-Admin-Key": settings.admin_api_key})
+
+        # Tour compiler for a 2-minute visit must budget <= 2 minutes
+        res_2min = client.post("/api/tours/plan", json={
+            "persona": "Industry executive",
+            "agenda": "High performance computing & AI model serving",
+            "duration_minutes": 2,
+            "interests": ["gpu", "compute"]
+        })
+        assert res_2min.status_code == 200
+        plan = res_2min.json()
+        assert plan["status"] == "planned"
+        assert plan["allocated_minutes"] <= 2
+        assert len(plan["stops"]) >= 1
+
+        # Tour compiler for a 15-minute visit allocates proportionally
+        res_15min = client.post("/api/tours/plan", json={
+            "persona": "Academic visitor",
+            "agenda": "AI model training and compute infrastructure",
+            "duration_minutes": 15,
+            "interests": ["compute", "gpu"]
+        })
+        assert res_15min.status_code == 200
+        plan_15 = res_15min.json()
+        assert plan_15["status"] == "planned"
+        assert plan_15["allocated_minutes"] <= 15
+        assert len(plan_15["stops"]) >= 1
+    finally:
+        client.delete(f"/api/assets/{asset_id}", headers={"X-Admin-Key": settings.admin_api_key})
+        settings.admin_api_key = original
+
+
+def test_faq_analytics_aggregation():
+    res = client.get("/api/analytics/overview")
+    assert res.status_code == 200
+    data = res.json()
+    assert "frequently_asked_topics" in data
+    assert isinstance(data["frequently_asked_topics"], list)

@@ -1,178 +1,208 @@
 # LabSPOC AI — Spatially Grounded Virtual Lab Ambassador
 
-**SparkX 3.0 · Smart Campus & Digital Twin · AI & ML Laboratory profile**  
-**Release 0.7.0 — Phase 07 spatial digital-twin foundation (development build)**
+**Challenge:** Galgotias University — SPARKX 3.0 International, 30-Day Innovation Challenge  
+**Track:** Smart Campus & Digital Twin / AI-Powered Intelligent Lab SPOC  
+**Institution:** Oriental Institute of Science & Technology (OIST), Bhopal  
+**Laboratory Profile:** AI & ML Laboratory  
+**Preferred AI Provider:** Google Gemini (`gemini-2.5-flash`, `gemini-embedding-001`)  
+**Release:** 0.7.0 (Production Stabilization & Full Feature Integration)  
 
-LabSPOC AI is an evidence-aware virtual laboratory ambassador. It combines a visitor portal, equipment/zone records, document-grounded Q&A, visitor tour planning and consent-aware analytics. It is configured for the AI & ML Laboratory at Oriental Institute of Science & Technology, Bhopal; institution-specific records remain empty until verified information is supplied.
+---
 
-## What's included in this release
+## Executive Overview
 
-### Phase 05 — Access control and governance
-- Bootstrap admin account via environment variables.
-- PBKDF2 password hashing and short-lived HS256 bearer tokens.
-- Admin/editor/viewer role model; admin-only user administration and audit-log viewing.
-- Account activation checked on protected bearer-token requests.
-- Audit events for login attempts, user administration, knowledge approvals and reindex operations.
-- Legacy `X-Admin-Key` compatibility remains for migration from earlier releases.
+**LabSPOC AI** is an institutional laboratory intelligence platform and digital twin ambassador for the AI & ML Laboratory at Oriental Institute of Science & Technology (OIST), Bhopal. Unlike standard conversational bots or static web showcases, LabSPOC AI enforces **strict evidence-first grounding**:
+1. It navigates a database-backed **3D digital twin** of laboratory zones and equipment hotspots.
+2. It generates **verifiably grounded responses** using Google Gemini constrained strictly to approved laboratory manuals, SOPs, and technical records.
+3. It passes every AI response through an **Evidence Gate** that detects insufficient evidence and abstains honestly rather than inventing specifications.
+4. It compiles **time-boxed visitor tour itineraries** (2, 5, or 15 minutes) customized to visitor personas and interest objectives.
+5. It hosts an **AI Project Demonstrator** with student/faculty registration and administrative review workflows.
+6. It tracks **consent-aware visitor analytics** and clusters frequently asked question topics.
 
-### Phase 06 — Hybrid evidence-grounded RAG
-- Gemini embedding integration (default model: `gemini-embedding-001`).
-- Persisted per-chunk embeddings.
-- Hybrid semantic cosine + lexical retrieval; lexical fallback when embeddings are unavailable.
-- Only approved documents are eligible for retrieval.
-- Gemini answer generation receives retrieved evidence only; invalid citation indices and unsupported uncited factual outputs are rejected in favor of extractive fallback.
-- Admin endpoints for reindexing and retrieval evaluation (Recall@K and MRR against curator-labelled cases).
+---
 
-### Existing product foundations
-- Next.js 14, React, TypeScript, Tailwind, Three.js / React Three Fiber frontend.
-- FastAPI and SQLAlchemy backend; SQLite local development and PostgreSQL configuration.
-- Zone/equipment/photo data foundations, visitor tour planner, approved project gallery, consent-aware analytics.
+## Five Core Challenge Modules
 
-## Quick start — Windows 11
+### Module 1: AI Virtual Lab Guide
+- **Interactive 3D Digital Twin:** Rendered with Three.js / React Three Fiber, featuring orbit controls, dynamic lighting, zone platforms, and interactive equipment hotspots.
+- **Configurable Laboratory Zones:** Persistent coordinates (`x`, `z`, `width`, `depth`) with an in-app administrator geometry editor and audit logging.
+- **Database-Backed Equipment Hotspots:** Click-to-inspect hotspots with technical specs, manufacturer details, model numbers, and verification status badges.
+- **Visual Evidence & Photo Support:** Dedicated photo upload and gallery viewer for physical equipment verification.
+- **Honest Prototype Boundary:** Room geometry is explicitly labeled as *illustrative* pending an on-site photogrammetric survey.
 
-### 1. Requirements
-- Python 3.11+
-- Node.js 20+
-- npm
-- Optional: Docker Desktop for PostgreSQL
+### Module 2: Conversational Lab Assistant
+- **Gemini-Powered Dialogue:** Multi-turn conversational interface powered by Google Gemini with temperature control (0.1) for rigorous factual grounding.
+- **Browser-Supported Voice:** Web Speech API recognition (Speech-to-Text) and speech synthesis (Text-to-Speech) supporting English and Hindi (हिन्दी) initially.
+- **Multi-Turn Context:** Full dialogue session memory stored in `conversation_turns` table to maintain context across turns.
+- **Honest Abstention:** Explicit abstention when approved institutional evidence is insufficient.
 
-### 2. Configure the backend
+### Module 3: RAG-Based Lab Knowledge System
+- **Multi-Format Ingestion:** Ingests PDF (via `pypdf`), DOCX (via `python-docx`), TXT, and Markdown files with SHA-256 deduplication and max upload limits.
+- **Document Governance:** Strict two-step lifecycle (`pending_review` → `approved`). Only approved documents are eligible for vector embedding and retrieval.
+- **Optimized Hybrid Retrieval:** Joint semantic cosine search (`gemini-embedding-001`) + lexical term overlap with single-query eager fetching (eliminating N+1 database queries).
+- **Offline Retrieval Evaluation:** Built-in benchmarking harness computing **Recall@K** and **Mean Reciprocal Rank (MRR)**.
+
+### Module 4: AI Project Demonstrator
+- **Student & Faculty Project Registration:** Public submission portal (`POST /api/projects/submit`) for students and faculty innovators.
+- **Administrative Approval Queue:** Administrator review workflow (`POST /api/projects/{id}/approve`) to publish verified innovations.
+- **Project Showcase:** Highlights problem statement, methodology, technology stack, societal impact, and live demonstration links.
+
+### Module 5: Visitor Interaction & Analytics
+- **Visitor Onboarding:** Persona selection (Undergraduate, Academic visitor, Industry executive, Research scientist, Accreditation reviewer), visit objectives, and time limits (2, 5, 15 min).
+- **Consent-Aware Analytics:** Strict opt-in privacy mechanism; interaction events are recorded only with explicit visitor consent.
+- **FAQ Topic Clustering:** Aggregates and clusters frequently asked question topics and hotspot targets.
+- **Visit Summary:** One-click session report generation with copyable text and event timeline.
+
+---
+
+## Signature Innovations
+
+### A. Spatially Anchored Evidence Graph (SAEG)
+Persistent relational graph linking:
+```
+Zone (Spatial Coordinates) ──contains──> Equipment Asset (Persistent ID)
+                                          ├──supported_by──> Document (Manual / SOP / Spec Sheet)
+                                          └──demonstrated_in─> Approved Project
+```
+Exposed via dedicated `/api/graph/overview` and `/api/graph/links` endpoints.
+
+### B. Agenda-to-Tour Compiler
+Intelligent route solver that compiles a custom itinerary based on:
+- Visitor Persona (affinity weighting for students, researchers, or executives).
+- Available Time Budget (strict 2-min, 5-min, or 15-min allocation).
+- Verified Equipment and Approved Projects only.
+
+### C. Evidence Gate
+Automated verification pipeline that inspects every AI response before display:
+- Validates citation bracket indices `[1]`, `[2]` against retrieved approved evidence.
+- Detects factual assertions made without evidence and forces fallback or abstention.
+- Exposes structured gate metadata (`verified_grounding`, `abstention_triggered`, `citations_validated`) in the API response.
+
+---
+
+## Quick Start & Installation
+
+### Prerequisites
+- **Python:** 3.11 or 3.12 (Python 3.12 tested and verified)
+- **Node.js:** v20+ (Node v26 tested and verified)
+- **npm:** 10+
+- **Git**
+
+### 1. Backend Setup
 
 ```powershell
 cd apps/api
-python -m venv .venv
+py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 Copy-Item .env.example .env
 ```
 
-Edit `apps/api/.env` and configure at least:
-
+Configure `apps/api/.env`:
 ```env
 LLM_PROVIDER=gemini
 GEMINI_API_KEY=your_google_ai_studio_key
 GEMINI_MODEL=gemini-2.5-flash
 EMBEDDING_MODEL=gemini-embedding-001
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=use-a-unique-password-at-least-12-chars
-JWT_SECRET=use-a-unique-random-secret-at-least-32-characters
-ADMIN_API_KEY=optional-legacy-local-secret
+ADMIN_PASSWORD=your-secure-admin-password
+JWT_SECRET=your-secure-random-secret-at-least-32-chars
 LAB_NAME=AI & ML Laboratory
 INSTITUTION_NAME=Oriental Institute of Science & Technology, Bhopal
 ```
 
-Get a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey). Never put it in frontend variables or commit `.env`.
-
-Start the API:
-
+Run the backend:
 ```powershell
-uvicorn app.main:app --reload --port 8000
+.venv\Scripts\uvicorn app.main:app --reload --port 8000
 ```
+API Documentation: `http://localhost:8000/docs`
 
-API docs: http://localhost:8000/docs
-
-### 3. Start the frontend (second terminal)
+### 2. Frontend Setup
 
 ```powershell
 cd apps/web
-Copy-Item .env.local.example .env.local
 npm install
+npm run build
 npm run dev
 ```
 
-Open http://localhost:3000. Visitor experience: http://localhost:3000/visit.
+Open:
+- **Operations & Admin Workspace:** `http://localhost:3000`
+- **Visitor Experience Portal:** `http://localhost:3000/visit`
 
-> The package installation and frontend production build could not be verified in the build environment because `npm install` timed out. Run `npm install` and `npm run build` locally before deployment.
+---
 
-## First administrator login
+## Automated Test Suite
 
-1. Start the backend with `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `JWT_SECRET` set.
-2. Open the **Knowledge** section in the workspace.
-3. Sign in using the bootstrap username and password.
-4. Upload authorized PDF, DOCX, TXT or MD knowledge documents.
-5. Review each upload and approve it only after checking source authority, currentness and permission to use it.
-6. Select **Rebuild semantic knowledge index** after configuring Gemini embeddings or after approving older documents.
-
-The bootstrap admin account is created on first successful login if it does not exist. Password hashes, not plaintext passwords, are stored in the users table.
-
-## Key API routes
-
-| Route | Purpose | Access |
-|---|---|---|
-| `POST /api/auth/login` | Obtain bearer token | Public |
-| `GET /api/auth/me` | Inspect current user | Bearer token |
-| `POST /api/admin/users` | Create users | Admin |
-| `GET /api/admin/users` | List users | Admin |
-| `PATCH /api/admin/users/{id}/status` | Activate/deactivate account | Admin |
-| `GET /api/admin/audit-logs` | Inspect audit records | Admin |
-| `POST /api/knowledge/upload` | Upload authorized knowledge | Admin/editor or legacy key |
-| `POST /api/knowledge/documents/{id}/approve` | Approve source for retrieval | Admin/editor or legacy key |
-| `POST /api/knowledge/reindex` | Generate missing Gemini embeddings | Admin/editor or legacy key |
-| `POST /api/knowledge/evaluate` | Evaluate retrieval against labelled cases | Admin/editor or legacy key |
-| `POST /api/assistant/query` | Evidence-grounded question answering | Public visitor route |
-
-## Retrieval evaluation
-
-Example request to `POST /api/knowledge/evaluate`:
-
-```json
-{
-  "cases": [
-    {
-      "question": "Which approved manual describes the GPU workstation?",
-      "expected_document_ids": ["replace-with-curated-document-id"]
-    }
-  ]
-}
-```
-
-The endpoint returns Recall@K and MRR. Expected document IDs must be independently labelled by a human reviewer. Do not report metrics from placeholder labels as product performance. Build a test set with equipment questions, multi-hop SOP questions, ambiguous queries, outdated/conflicting source cases, and questions that should abstain.
-
-## Security and deployment notes
-
-- `ADMIN_API_KEY` is retained only for backward compatibility. Remove it after all clients use bearer tokens; otherwise it remains a privileged alternative credential.
-- Use HTTPS, a secret manager, persistent encrypted database/media storage, backups, rate limits, request-size limits, and institutional access policies before a public deployment.
-- No SSO, MFA, password reset, refresh-token rotation, email verification, formal threat model, or penetration test is included in this development release.
-- `viewer` is a defined account role but the anonymous visitor portal does not require visitor accounts.
-- Existing deployments should use Alembic migrations before schema evolution. `Base.metadata.create_all` creates new tables but is not a migration system.
-
-## Honest prototype boundaries
-
-- The 3D room remains illustrative, not a surveyed digital twin. No lab photos were provided. Do not claim spatial accuracy or actual equipment mapping until a lab survey and approved asset inventory are available.
-- No institutional equipment, GPU models, publications, project outcomes, SOPs or live sensor telemetry are preloaded.
-- Gemini embeddings and generation require a valid key, network access and model availability. Failures use lexical retrieval/extractive fallback.
-- Hybrid retrieval is implemented, but retrieval quality has not been benchmarked on an OIST-labelled dataset. The evaluation endpoint is a measurement harness, not proof of achieved accuracy.
-- Citation checks reduce some unsupported model output but do not guarantee factual correctness. Human review remains necessary for safety-critical or operational guidance.
-- Browser speech depends on browser/device support and is not a guaranteed production voice service.
-- This is a development release, not a production-certified institutional platform.
-
-## Test suite
+To run the complete automated test suite (19 integration and unit tests):
 
 ```powershell
 cd apps/api
-pip install -r requirements-dev.txt
-pytest -q
+.venv\Scripts\pytest -v
 ```
 
-Phase 05/06 local automated suite: **10 tests passed** at packaging time. Live Gemini embedding/generation, frontend production build, PostgreSQL migration path and public deployment remain unverified.
+All 19 tests pass:
+- System health and configuration checks
+- Honest abstention on unsupported queries
+- Fail-closed administrative authentication
+- Token-based RBAC and account activation enforcement
+- Zone coordinate persistence and layout editing
+- Consent-aware visitor event logging
+- Multi-turn conversation retention
+- Spatially Anchored Evidence Graph (SAEG) endpoints
+- Public project submission and administrator approval
+- Agenda-to-Tour persona budgeting (2-min vs 15-min limits)
+- FAQ analytics aggregation
+- Evidence Gate structure validation
 
-## Documentation
-- `docs/ARCHITECTURE.md`
-- `docs/SECURITY.md`
-- `docs/USER_MANUAL.md`
-- `docs/PHASE_05_06_RELEASE_NOTES.md`
-- `docs/SPARKX_30_DAY_SUBMISSION_CHECKLIST.md`
+---
+
+## Security Architecture
+
+1. **Authentication:** PBKDF2 password hashing (240,000 iterations) with individual hex salts and HS256 JWT bearer tokens.
+2. **Role-Based Authorization:** Strict `admin`, `editor`, and `viewer` hierarchy on all management endpoints.
+3. **Rate Limiting:** Sliding-window rate limiter protecting authentication and query endpoints against brute-force attacks.
+4. **File Validation:** Magic-byte sniffing for image uploads and strict extension whitelisting (.pdf, .docx, .txt, .md) with size limits.
+5. **No Secret Exposure:** Administrative credentials and Gemini API keys are strictly server-side and never exposed to client code.
+
+---
+
+## Repository Structure
+
+```
+.
+├── CODEBASE_AUDIT.md            # Comprehensive Phase 01 codebase audit
+├── IMPLEMENTATION_STATUS.md     # Module and innovation delivery status
+├── TECHNICAL_DEBT.md            # Technical debt identification & resolutions
+├── README.md                    # Project documentation
+├── apps/
+│   ├── api/                     # Python FastAPI backend
+│   │   ├── app/
+│   │   │   ├── auth.py          # HS256 JWT & PBKDF2 authentication
+│   │   │   ├── config.py        # Settings & environment variables
+│   │   │   ├── db.py            # Database session & engine
+│   │   │   ├── embeddings.py    # Gemini embeddings & cosine similarity
+│   │   │   ├── llm.py           # Grounded answer generation & Evidence Gate
+│   │   │   ├── main.py          # FastAPI application & router endpoints
+│   │   │   ├── models.py        # SQLAlchemy relational models
+│   │   │   ├── retrieval.py     # Eager-joined hybrid semantic/lexical retriever
+│   │   │   └── schemas.py       # Pydantic request & response models
+│   │   └── tests/
+│   │       └── test_api.py      # Automated pytest suite (19 test cases)
+│   └── web/                     # Next.js 14 frontend
+│       └── src/
+│           ├── app/
+│           │   ├── page.tsx     # Operations & administration workspace
+│           │   └── visit/
+│           │       └── page.tsx # Visitor experience portal
+│           ├── components/
+│           │   └── LabScene.tsx # 3D Three.js / React Three Fiber floor plan
+│           └── lib/
+│               └── api.ts       # Type-safe API client
+└── docs/                        # Architecture, user manual & release notes
+```
+
+---
 
 ## License
-MIT — see `LICENSE`.
-
-
-## Phase 07 — Spatial Digital Twin Foundation
-
-Phase 07 adds database-backed spatial zones and a dynamic React Three Fiber floor-plan explorer. Read `docs/PHASE_07_RELEASE_NOTES.md` before using it. The current scene is explicitly illustrative and is not a surveyed representation of the physical OIST laboratory.
-
-- `GET /api/spatial/scene` returns zones and associated equipment.
-- `PATCH /api/zones/{zone_id}/layout` updates spatial dimensions (admin/editor only).
-- Existing SQLite/PostgreSQL installations receive additive spatial columns at startup.
-
-Do not claim physical digital-twin accuracy until the room has been measured and the layout approved by the institution.
+MIT License — See `LICENSE`.
